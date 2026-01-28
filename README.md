@@ -112,4 +112,4 @@ python src/processors/extractor.py "C:\Music\Video.mkv" "mp3"
 
 ---
 
-**Built with 💻 & ☕ by Hrushikesh**
+**Built with 💻 & ☕ by Hrushikesh Bunni**
