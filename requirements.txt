@@ -1,1 +1,5 @@
+# --- CORE ENGINE ---
+# The Python wrapper for FFmpeg.
+# This allows the script to compress, convert, and modify video files.
+# NOTE: Requires FFmpeg software installed on the system OS.
 ffmpeg-python
