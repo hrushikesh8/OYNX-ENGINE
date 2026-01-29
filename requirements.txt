@@ -2,4 +2,5 @@
 # The Python wrapper for FFmpeg.
 # This allows the script to compress, convert, and modify video files.
 # NOTE: Requires FFmpeg software installed on the system OS.
+# Install FFmpeg from https://ffmpeg.org/download.html
 ffmpeg-python
