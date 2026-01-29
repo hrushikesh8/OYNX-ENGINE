@@ -192,3 +192,42 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+
+"""
+-----------------------------------------------------------------------
+                           CODE EXPLANATION
+-----------------------------------------------------------------------
+
+1.  **Architecture (Modular Design)**:
+    -   This `main.py` acts as the **Orchestrator**. It does not contain the 
+        heavy video processing logic itself. 
+    -   Instead, it imports specialized classes (e.g., `VideoEditor`, `TrackProcessor`) 
+        from the `src.processors` package. This adheres to the "Separation of Concerns" 
+        principle, making the project easy to maintain and expand.
+
+2.  **Dependency Check (`SystemUtils`)**:
+    -   Before showing the menu, the script runs `check_ffmpeg_availability()`.
+    -   This ensures the core engine (FFmpeg) is installed on the host machine, 
+        preventing crashes later in the execution.
+
+3.  **The `scan_folder` Utility**:
+    -   A helper function used for batch operations (like Options 4 & 5).
+    -   It uses `glob` to recursively find all video files in a directory, 
+        allowing the user to process entire seasons of shows or playlists at once.
+
+4.  **Input Handling & Dispatch**:
+    -   The script uses a simple CLI (Command Line Interface) menu.
+    -   It captures user input (`choice`) and uses an `if-elif` structure to 
+        route the request to the correct processor.
+    -   Example: If user selects '7', the `VideoEditor` class is instantiated 
+        to handle the splitting logic.
+
+5.  **Error Handling**:
+    -   `try-except` blocks are placed around numerical inputs (like timestamps 
+        or track IDs) to prevent the program from crashing if a user types 
+        invalid text.
+
+-----------------------------------------------------------------------
+"""
