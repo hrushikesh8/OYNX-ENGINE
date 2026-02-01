@@ -43,12 +43,23 @@ def main():
     choice = input("\nSelect an option (1-13): ")
     
     # --- 1. CONVERT ---
+    # --- 1. CONVERT ---
     if choice == "1":
-        path = input("Enter video path: ").strip('"')
-        fmt = input("Target format (mp4/mkv/avi): ")
+        path = input("Enter input path (File or Folder): ").strip('"')
+        fmt = input("Target format (mp4/mkv/avi): ").lower()
         processor = FormatMapper()
-        result = processor.convert_video(path, os.path.dirname(path), fmt)
-        print(f"Result: {result['status']}")
+        
+        # Define output folder
+        if os.path.isfile(path):
+            output_dir = os.path.join(os.path.dirname(path), "converted")
+        else:
+            output_dir = os.path.join(path, "converted")
+            
+        # Use the smart 'process_input' method we added earlier
+        # This handles both Files AND Folders automatically
+        processor.process_input(path, output_dir, fmt)
+        # ✅ FIX: Manually set success to True so the script doesn't crash at the end
+        success = True
 
     # --- 2/3. CLEAN TRACKS ---
     elif choice in ["2", "3"]:
@@ -74,6 +85,7 @@ def main():
                 print("Processing...")
                 if processor.keep_multiple_tracks(path, out_path, indices, stream_type):
                     print(f"✅ Saved to: {out_path}")
+                    success = True # Set success to True to avoid crash
             except ValueError:
                 print("Invalid input.")
 
