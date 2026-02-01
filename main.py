@@ -1,3 +1,12 @@
+This error is happening because the variable `success` is being checked at the very bottom of your script, but it hasn't been defined in *any* of the options (1 through 12).
+
+The best fix is to **initialize `success = False` at the very top** of your logic. This way, the variable always exists, and we don't need to add it manually inside every single `if/elif` block.
+
+Here is the **complete, fixed `main.py**`. Copy and replace your entire file with this code.
+
+### ✅ Complete Fixed `main.py`
+
+```python
 import os
 import glob
 import sys
@@ -42,24 +51,24 @@ def main():
 
     choice = input("\nSelect an option (1-13): ")
     
-    # --- 1. CONVERT ---
+    # ✅ FIX 1: Initialize success variable globally here
+    success = False
+
     # --- 1. CONVERT ---
     if choice == "1":
         path = input("Enter input path (File or Folder): ").strip('"')
         fmt = input("Target format (mp4/mkv/avi): ").lower()
         processor = FormatMapper()
         
-        # Define output folder
+        # Determine output folder
         if os.path.isfile(path):
             output_dir = os.path.join(os.path.dirname(path), "converted")
         else:
             output_dir = os.path.join(path, "converted")
             
-        # Use the smart 'process_input' method we added earlier
-        # This handles both Files AND Folders automatically
+        # Run process
         processor.process_input(path, output_dir, fmt)
-        # ✅ FIX: Manually set success to True so the script doesn't crash at the end
-        success = True
+        success = True # Assume batch processor handles its own errors
 
     # --- 2/3. CLEAN TRACKS ---
     elif choice in ["2", "3"]:
@@ -85,7 +94,7 @@ def main():
                 print("Processing...")
                 if processor.keep_multiple_tracks(path, out_path, indices, stream_type):
                     print(f"✅ Saved to: {out_path}")
-                    success = True # Set success to True to avoid crash
+                    success = True
             except ValueError:
                 print("Invalid input.")
 
@@ -96,6 +105,7 @@ def main():
         videos = scan_folder(folder, ['.mkv', '.mp4', '.avi'])
         print(f"Found {len(videos)} videos. Scanning for subs...")
         
+        count = 0
         for vid_path in videos:
             base = os.path.splitext(vid_path)[0]
             found_sub = None
@@ -108,6 +118,9 @@ def main():
                 print(f"🔗 Matching: {os.path.basename(vid_path)}")
                 out = base + "_subbed.mkv"
                 merger.mux_subtitles(vid_path, found_sub, out)
+                count += 1
+        
+        if count > 0: success = True
 
     # --- 5. COMPRESS ---
     elif choice == "5":
@@ -116,11 +129,14 @@ def main():
         videos = scan_folder(folder, ['.mkv', '.mp4', '.mov'])
         threshold = 1.5 
         
+        count = 0
         for vid in videos:
             if compressor.get_file_size_gb(vid) > threshold:
                 print(f"📉 Compressing: {os.path.basename(vid)}")
                 out = os.path.splitext(vid)[0] + "_compressed.mkv"
                 compressor.compress_audio_maintain_video(vid, out)
+                count += 1
+        success = True
 
     # --- 6. SHORTS ---
     elif choice == "6":
@@ -129,6 +145,7 @@ def main():
         out = os.path.splitext(path)[0] + "_shorts.mp4"
         if editor.convert_to_shorts_style(path, out):
             print(f"✅ Created: {out}")
+            success = True
 
     # --- 7. SPLIT ---
     elif choice == "7":
@@ -136,6 +153,7 @@ def main():
         sec = int(input("Enter duration per part (seconds): "))
         editor = VideoEditor()
         editor.split_by_time(path, sec)
+        success = True
 
     # --- 8. STITCH ---
     elif choice == "8":
@@ -146,6 +164,7 @@ def main():
             out_name = input("Output filename: ")
             stitcher = VideoStitcher()
             stitcher.concat_videos(files, os.path.join(folder, out_name))
+            success = True
 
     # --- 9. WATERMARK ---
     elif choice == "9":
@@ -154,7 +173,8 @@ def main():
         pos = input("Position (br, bl, tr, tl, center): ")
         wm = Watermarker()
         out = os.path.splitext(vid)[0] + "_branded.mp4"
-        wm.add_image_watermark(vid, img, out, pos)
+        if wm.add_image_watermark(vid, img, out, pos):
+            success = True
 
     # --- 10. GIF ---
     elif choice == "10":
@@ -164,6 +184,7 @@ def main():
         maker = GifMaker()
         out = os.path.splitext(path)[0] + ".gif"
         maker.create_high_quality_gif(path, out, start, dur)
+        success = True
 
     # --- 11. REMASTER ---
     elif choice == "11":
@@ -171,40 +192,50 @@ def main():
         remaster = VideoRemaster()
         out = os.path.splitext(path)[0] + "_remastered.mp4"
         remaster.enhance_old_footage(path, out)
+        success = True
     
-     # --- 12: DIVIDER (INTERMISSION) ---
+     # --- 12: DIVIDER ---
     elif choice == "12":
         path = input("Enter video path: ").strip('"')
         try:
             print("Tip: 1 hour = 3600 seconds")
             split_time = float(input("Enter split time in seconds: "))
             
-            divider = VideoDivider() # Using new class
-            success, p1, p2 = divider.split_at_intermission(path, split_time)
+            divider = VideoDivider()
+            s, p1, p2 = divider.split_at_intermission(path, split_time)
             
-            if success:
+            if s:
                 print(f"✅ Division Successful!")
                 print(f"   Part 1: {os.path.basename(p1)}")
                 print(f"   Part 2: {os.path.basename(p2)}")
+                success = True
             else:
                 print("❌ Division failed.")
         except ValueError:
             print("Invalid number.")
-        # --- OPTION 13: EXTRACT AUDIO ---
+
+    # --- 13: EXTRACT AUDIO ---
     elif choice == "13":
         path = input("Enter video path: ").strip('"')
         fmt = input("Output format (mp3/wav/original): ").lower()
 
         extractor = AudioExtractor()
+        # Captures success status from the extractor
         success, out = extractor.extract_audio(path, fmt)
+        
+        if success:
+            print(f"✅ Audio saved to: {out}")
+        else:
+            print("❌ Extraction failed.")
+
+    # ✅ FIX 2: Check success safely (it will always exist now)
     if success:
-        print(f"✅ Audio saved to: {out}")
+        print("\n✨ Operation Completed Successfully")
     else:
-        print("❌ Extraction failed.")  
+        print("\n⚠️ Operation Finished (Check logs for details)")
 
 if __name__ == "__main__":
     main()
-
 
 
 """
