@@ -1,12 +1,3 @@
-This error is happening because the variable `success` is being checked at the very bottom of your script, but it hasn't been defined in *any* of the options (1 through 12).
-
-The best fix is to **initialize `success = False` at the very top** of your logic. This way, the variable always exists, and we don't need to add it manually inside every single `if/elif` block.
-
-Here is the **complete, fixed `main.py**`. Copy and replace your entire file with this code.
-
-### ✅ Complete Fixed `main.py`
-
-```python
 import os
 import glob
 import sys
