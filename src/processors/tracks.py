@@ -1,15 +1,15 @@
 import subprocess
 import json
-import os
-import sys
-from typing import List
 
 class TrackProcessor:
-    def get_track_info(self, input_path: str, stream_type: str = 'a') -> list:
-        """Returns a list of tracks for the given type ('a' or 's')."""
+    def get_track_info(self, input_path: str, stream_type='a') -> list:
+        """
+        Returns a list of tracks with CODEC info to detect broken streams.
+        """
         cmd = [
             'ffprobe', '-v', 'error',
-            '-show_entries', 'stream=index:stream_tags=language,title',
+            # We added 'codec_name' here to spot the 'none' codecs
+            '-show_entries', 'stream=index,codec_name:stream_tags=language,title',
             '-select_streams', stream_type,
             '-of', 'json',
             input_path
@@ -22,51 +22,57 @@ class TrackProcessor:
             print(f"Error reading tracks: {e}")
             return []
 
-    def keep_multiple_tracks(self, input_path: str, output_path: str, track_indices: List[int], stream_type: str = 'a'):
-        """Removes all tracks of 'stream_type' EXCEPT the ones in 'track_indices'."""
-        command = ['ffmpeg', '-i', input_path, '-map', '0']
-        command.extend(['-map', f'-0:{stream_type}']) # Deselect all
-        
-        for idx in track_indices:
-            command.extend(['-map', f'0:{stream_type}:{idx}']) # Add back selected
+    def keep_multiple_tracks(self, input_path, output_path, track_indices, stream_type='a'):
+        """
+        Surgically maps only VALID streams. 
+        explicitly skips any stream where codec_name is 'none' or 'unknown'.
+        """
+        # 1. Map the MAIN VIDEO only (usually the first video stream)
+        # We use 0:v:0 to avoid accidentally grabbing cover art images as video
+        cmd = ['ffmpeg', '-i', input_path, '-map', '0:v:0']
 
-        command.extend(['-c', 'copy', '-y', output_path])
+        # 2. Map the SELECTED tracks (Audio or Subtitle)
+        # (The ones you chose by ID)
+        for idx in track_indices:
+            cmd.extend(['-map', f'0:{stream_type}:{idx}'])
+
+        # 3. Smart-Map the UNTOUCHED tracks
+        # If you selected Audio, we need to check the Subtitles for errors.
+        other_type = 's' if stream_type == 'a' else 'a'
         
+        # Get list of all tracks of the other type
+        other_tracks = self.get_track_info(input_path, other_type)
+        
+        print(f"   🔍 Scanning {len(other_tracks)} {other_type.upper()} tracks for errors...")
+
+        valid_count = 0
+        for i, track in enumerate(other_tracks):
+            codec = track.get('codec_name', 'unknown')
+            
+            # THE FIX: If codec is 'none', we DO NOT add it to the command.
+            if codec == 'none' or codec == 'unknown':
+                print(f"   ⚠️ Skipping BROKEN stream #{i} (Codec: {codec})")
+                continue
+            
+            # If valid, map it explicitly by its index
+            cmd.extend(['-map', f'0:{other_type}:{i}'])
+            valid_count += 1
+
+        print(f"   ✅ Keeping {valid_count} valid {other_type.upper()} tracks.")
+
+        # 4. Final settings
+        cmd.extend([
+            '-c', 'copy',           # Copy mode (Fast)
+            '-ignore_unknown',      # Extra safety
+            '-y', output_path
+        ])
+
         try:
-            subprocess.run(command, check=True, capture_output=True)
+            subprocess.run(cmd, check=True, capture_output=True)
             return True
         except subprocess.CalledProcessError as e:
-            print(f"FFmpeg Error: {e.stderr.decode()}")
+            print(f"❌ FFmpeg Logic Error: {e.stderr.decode('utf-8')}")
             return False
-
-# --- STANDALONE EXECUTION LOGIC ---
-if __name__ == "__main__":
-    # Args: Script, InputPath, StreamType(a/s), Indices(comma-separated)
-    if len(sys.argv) < 4:
-        print("❌ Error: Missing arguments.")
-        print("Usage: python tracks.py <input_file> <type:a|s> <keep_indexes:0,1>")
-        sys.exit(1)
-
-    input_path = sys.argv[1]
-    stream_type = sys.argv[2]
-    indices_str = sys.argv[3]
-    
-    # Generate Output Filename
-    filename, ext = os.path.splitext(input_path)
-    label = "audio" if stream_type == 'a' else "subs"
-    output_path = f"{filename}_clean_{label}{ext}"
-
-    try:
-        indices = [int(x) for x in indices_str.split(',')]
-        processor = TrackProcessor()
-        print(f"Processing: {os.path.basename(input_path)}...")
-        
-        if processor.keep_multiple_tracks(input_path, output_path, indices, stream_type):
-            print(f"✅ Success! Saved to: {output_path}")
-        else:
-            print("❌ Failed.")
-    except Exception as e:
-        print(f"❌ Error: {e}")
 
 # ==========================================
 # HOW TO USE THIS CODE (EXAMPLE)

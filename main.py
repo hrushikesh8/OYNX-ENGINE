@@ -89,29 +89,66 @@ def main():
             except ValueError:
                 print("Invalid input.")
 
-    # --- 4. MERGE SUBS ---
+    # --- 4. BATCH MERGE (Subtitles or Audio) ---
     elif choice == "4":
+        # 1. Ask user for the folder containing the files
         folder = input("Enter folder path: ").strip('"')
+        
+        # 2. Determine mode: Are we adding Subtitles (s) or Audio (a)?
+        merge_type = input("Merge Subtitles or Audio? (s/a): ").lower()
+        
         merger = StreamMerger()
+        
+        # 3. Find all video files in the folder (Recursively)
+        # scan_folder is a helper function defined at the top of main.py
         videos = scan_folder(folder, ['.mkv', '.mp4', '.avi'])
-        print(f"Found {len(videos)} videos. Scanning for subs...")
+        print(f"📂 Found {len(videos)} videos. Scanning for matches...")
         
         count = 0
-        for vid_path in videos:
-            base = os.path.splitext(vid_path)[0]
-            found_sub = None
-            for ext in ['.srt', '.ass']:
-                if os.path.exists(base + ext):
-                    found_sub = base + ext
-                    break
-            
-            if found_sub:
-                print(f"🔗 Matching: {os.path.basename(vid_path)}")
-                out = base + "_subbed.mkv"
-                merger.mux_subtitles(vid_path, found_sub, out)
-                count += 1
         
-        if count > 0: success = True
+        # 4. Loop through every video found
+        for vid_path in videos:
+            # Get the filename without extension (e.g., "C:\Movies\Avatar.mkv" -> "C:\Movies\Avatar")
+            base = os.path.splitext(vid_path)[0]
+            found_match = None
+            
+            # --- LOGIC FOR SUBTITLES ---
+            if merge_type == 's':
+                # Check if a matching .srt or .ass file exists
+                # Example: If video is "Avatar.mkv", it looks for "Avatar.srt"
+                for ext in ['.srt', '.ass']:
+                    if os.path.exists(base + ext):
+                        found_match = base + ext
+                        break # Found one, stop looking
+                
+                if found_match:
+                    # Create output name: "Avatar_subbed.mkv"
+                    out = base + "_subbed.mkv"
+                    if merger.mux_subtitles(vid_path, found_match, out):
+                        count += 1
+
+            # --- LOGIC FOR AUDIO ---
+            elif merge_type == 'a':
+                # Check if a matching audio file exists
+                # Example: If video is "Avatar.mkv", it looks for "Avatar.mp3"
+                for ext in ['.mp3', '.m4a', '.ac3', '.wav']:
+                    if os.path.exists(base + ext):
+                        found_match = base + ext
+                        break
+                
+                if found_match:
+                    # Create output name: "Avatar_merged.mkv"
+                    out = base + "_merged.mkv"
+                    if merger.merge_video_audio(vid_path, found_match, out):
+                        count += 1
+
+        # 5. Final Report
+        if count > 0:
+            success = True
+            print(f"\n🎉 Batch processing complete. Merged {count} files.")
+        else:
+            print("⚠️ No matching subtitle/audio files found.")
+            print("   (Ensure the audio/sub file has the EXACT same name as the video)")
 
     # --- 5. COMPRESS ---
     elif choice == "5":
