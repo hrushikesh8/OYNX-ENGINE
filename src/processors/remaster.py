@@ -1,106 +1,69 @@
 import subprocess
 import os
+import sys
 
-class StreamMerger:
-    def merge_video_audio(self, video_path: str, audio_path: str, output_path: str):
+class VideoRemaster:
+    def enhance_old_footage(self, input_path: str, output_path: str):
         """
-        Combines a video file (visuals) with a separate audio file.
-        Useful when you have downloaded 'Video Only' and 'Audio Only' streams separately.
+        Applies a restoration chain to improve old footage:
+        1. HQDN3D: High Quality Denoise (removes grain).
+        2. Unsharp: Sharpens edges.
+        3. EQ: Boosts contrast and saturation (fixes faded colors).
+        4. Scale: Upscales to 1080p using Lanczos algorithm.
         """
-        print(f"   🔗 Merging: {os.path.basename(video_path)} + {os.path.basename(audio_path)}")
         
-        command = [
-            'ffmpeg',
-            '-i', video_path,   # Input 0: The Video File
-            '-i', audio_path,   # Input 1: The Audio File
-            
-            # --- CODEC SETTINGS ---
-            '-c:v', 'copy',     # Copy video stream directly (No quality loss, very fast)
-            '-c:a', 'copy',     # Copy audio stream directly
-            
-            # --- MAPPING (The Crucial Part) ---
-            '-map', '0:v:0',    # Take the 1st Video stream from Input 0
-            '-map', '1:a:0',    # Take the 1st Audio stream from Input 1
-            
-            # --- SAFETY FLAGS ---
-            '-ignore_unknown',  # CRITICAL: If the input video has a broken/corrupt stream 
-                                # (like 'codec: none'), this tells FFmpeg to skip it 
-                                # instead of crashing the script.
-            
-            '-y', output_path   # Overwrite output file if it exists
-        ]
+        # Professional Filter Chain Explanation:
+        # hqdn3d=1.5:1.5:6:6       -> Denoise (spatial/temporal). Values tuned for film grain.
+        # unsharp=5:5:1.0:5:5:0.0  -> Sharpening matrix.
+        # eq=saturation=1.2:contrast=1.1 -> Boost color/contrast by 10-20%.
+        # scale=1920:-2:flags=lanczos -> Upscale to 1080p width, keep aspect ratio.
         
-        try:
-            # capture_output=True hides the messy FFmpeg logs unless there is an error
-            subprocess.run(command, check=True, capture_output=True)
-            print(f"   ✅ Success: {os.path.basename(output_path)}")
-            return True
-        except subprocess.CalledProcessError as e:
-            # If it fails, decode the error bytes to text so we can read it
-            print(f"❌ Merge Failed: {e.stderr.decode('utf-8')}")
-            return False
-
-    def mux_subtitles(self, video_path: str, sub_path: str, output_path: str):
-        """
-        Embeds (Softcodes) a subtitle file into a video container.
-        The subtitles can be turned on/off by the player.
-        """
-        print(f"   🔗 Muxing Subs: {os.path.basename(video_path)} + {os.path.basename(sub_path)}")
+        filter_chain = (
+            "hqdn3d=1.5:1.5:6:6,"
+            "unsharp=5:5:1.0:5:5:0.0,"
+            "eq=saturation=1.2:contrast=1.1,"
+            "scale=1920:-2:flags=lanczos"
+        )
 
         command = [
-            'ffmpeg', '-i', video_path, '-i', sub_path,
-            
-            # --- MAPPING ---
-            '-map', '0',   # Take EVERYTHING from Input 0 (Video + Original Audio + Original Subs)
-            '-map', '1',   # ADD the new subtitle file as an extra track
-            
-            # --- CODEC SETTINGS ---
-            '-c', 'copy',  # Copy everything
-            '-c:s', 'srt', # Force the subtitle codec to be SRT (Most compatible format)
-            
-            '-ignore_unknown', # Safety against corrupt streams
+            'ffmpeg', '-i', input_path,
+            '-vf', filter_chain,
+            '-c:v', 'libx264', '-preset', 'medium', '-crf', '20', # High quality encoding
+            '-c:a', 'copy', # Keep original audio
             '-y', output_path
         ]
-        
+
         try:
+            print(f"✨ Remastering (Denoise -> Sharpen -> Color -> Upscale)...")
+            print("⚠️  This process is CPU intensive. Please wait.")
             subprocess.run(command, check=True, capture_output=True)
-            print(f"   ✅ Success: {os.path.basename(output_path)}")
             return True
         except subprocess.CalledProcessError as e:
-            print(f"❌ Mux Error: {e.stderr.decode('utf-8')}")
+            print(f"Error: {e.stderr.decode()}")
             return False
 
+# --- STANDALONE EXECUTION LOGIC ---
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print("Usage: python remaster.py <old_movie_path>")
+        sys.exit(1)
+
+    path = sys.argv[1]
+    out = os.path.splitext(path)[0] + "_remastered_1080p.mp4"
+    
+    engine = VideoRemaster()
+    if engine.enhance_old_footage(path, out):
+        print(f"✅ Remaster Complete: {out}")
+    else:
+        print("❌ Failed.")
+
 # ==========================================
-# HOW TO USE THIS CODE (DOCUMENTATION)
+# HOW TO USE THIS CODE (EXAMPLE)
 # ==========================================
 #
-# NOTE: This file is a CLASS MODULE. It is not meant to be run directly.
-#       It should be imported into a script like 'main.py'.
+# Syntax: python src/processors/remaster.py <VideoPath>
 #
-# 1. Import the class:
-#    from src.processors.merger import StreamMerger
+# Example:
+# python src/processors/remaster.py "OldWedding_1985.avi"
 #
-# 2. Instantiate the class:
-#    merger = StreamMerger()
-#
-# 3. USE CASE A: Merge Video + Audio (External Audio File)
-#    # Useful if you have 'movie.mp4' (silent) and 'audio.mp3'
-#    merger.merge_video_audio(
-#        video_path="C:/Videos/SilentMovie.mp4",
-#        audio_path="C:/Videos/AudioTrack.mp3",
-#        output_path="C:/Videos/FinalMovie.mkv"
-#    )
-#
-# 4. USE CASE B: Mux Subtitles (Soft Subs)
-#    # Useful to add .srt files into an MKV container
-#    merger.mux_subtitles(
-#        video_path="C:/Videos/Movie.mkv",
-#        sub_path="C:/Videos/English.srt",
-#        output_path="C:/Videos/Movie_Subbed.mkv"
-#    )
-#
-# SAFETY FEATURES:
-# - This code uses '-ignore_unknown' to prevent FFmpeg from crashing 
-#   if the input video has corrupted internal streams (e.g. unknown codecs).
-# - It uses '-c copy' to ensure the process is instant (no re-encoding).
-# ==========================================
+# Result: Converts a grainy 480p file into a clean, sharp 1080p MP4.

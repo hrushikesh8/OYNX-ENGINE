@@ -69,3 +69,38 @@ class StreamMerger:
         except subprocess.CalledProcessError as e:
             print(f"❌ Mux Error: {e.stderr.decode('utf-8')}")
             return False
+
+# ==========================================
+# HOW TO USE THIS CODE (DOCUMENTATION)
+# ==========================================
+#
+# NOTE: This file is a CLASS MODULE. It is not meant to be run directly.
+#       It should be imported into a script like 'main.py'.
+#
+# 1. Import the class:
+#    from src.processors.merger import StreamMerger
+#
+# 2. Instantiate the class:
+#    merger = StreamMerger()
+#
+# 3. USE CASE A: Merge Video + Audio (External Audio File)
+#    # Useful if you have 'movie.mp4' (silent) and 'audio.mp3'
+#    merger.merge_video_audio(
+#        video_path="C:/Videos/SilentMovie.mp4",
+#        audio_path="C:/Videos/AudioTrack.mp3",
+#        output_path="C:/Videos/FinalMovie.mkv"
+#    )
+#
+# 4. USE CASE B: Mux Subtitles (Soft Subs)
+#    # Useful to add .srt files into an MKV container
+#    merger.mux_subtitles(
+#        video_path="C:/Videos/Movie.mkv",
+#        sub_path="C:/Videos/English.srt",
+#        output_path="C:/Videos/Movie_Subbed.mkv"
+#    )
+#
+# SAFETY FEATURES:
+# - This code uses '-ignore_unknown' to prevent FFmpeg from crashing 
+#   if the input video has corrupted internal streams (e.g. unknown codecs).
+# - It uses '-c copy' to ensure the process is instant (no re-encoding).
+# ==========================================
