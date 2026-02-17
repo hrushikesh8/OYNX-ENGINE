@@ -46,20 +46,42 @@ def main():
     success = False
 
     # --- 1. CONVERT ---
+    # --- 1. CONVERT (Hybrid Mode) ---
     if choice == "1":
-        path = input("Enter input path (File or Folder): ").strip('"')
-        fmt = input("Target format (mp4/mkv/avi): ").lower()
+        print("\n--- Conversion Mode ---")
+        print("1. Batch Convert (Entire Folder)")
+        print("2. Single Convert (One File)")
+        sub_choice = input("Select mode (1/2): ")
+        
         processor = FormatMapper()
         
-        # Determine output folder
-        if os.path.isfile(path):
-            output_dir = os.path.join(os.path.dirname(path), "converted")
+        # Common inputs
+        fmt = input("Target format (mp4/mkv/avi): ").lower()
+        
+        # MODE 1: BATCH
+        if sub_choice == "1":
+            folder_path = input("Enter Source Folder: ").strip('"')
+            if os.path.exists(folder_path):
+                # Create a "converted" folder inside the source
+                output_dir = os.path.join(folder_path, "converted")
+                processor.process_input(folder_path, output_dir, fmt)
+                success = True
+            else:
+                print("❌ Folder not found.")
+
+        # MODE 2: SINGLE
+        elif sub_choice == "2":
+            file_path = input("Enter File Path: ").strip('"')
+            if os.path.exists(file_path):
+                # Create a "converted" folder in the same directory as the file
+                output_dir = os.path.join(os.path.dirname(file_path), "converted")
+                processor.process_input(file_path, output_dir, fmt)
+                success = True
+            else:
+                print("❌ File not found.")
+        
         else:
-            output_dir = os.path.join(path, "converted")
-            
-        # Run process
-        processor.process_input(path, output_dir, fmt)
-        success = True # Assume batch processor handles its own errors
+            print("Invalid selection.")
 
     # --- 2/3. CLEAN TRACKS ---
     elif choice in ["2", "3"]:
