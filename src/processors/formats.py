@@ -12,6 +12,8 @@ class FormatMapper:
         'mov': ['-c:v', 'copy', '-c:a', 'aac'],
         'flv': ['-c:v', 'flv', '-c:a', 'aac'],
         'webm': ['-c:v', 'libvpx-vp9', '-c:a', 'libopus'],  # WebM usually needs re-encoding
+        'mpg': ['-c:v', 'mpeg2video', '-c:a', 'mp2'],       # MPG requires specific MPEG codecs
+        'mpeg': ['-c:v', 'mpeg2video', '-c:a', 'mp2'],      # Same as MPG
     }
 
     def convert_video(self, input_path: str, output_folder: str, target_format: str) -> dict:
@@ -19,12 +21,12 @@ class FormatMapper:
         filename = Path(input_path).stem
         output_path = os.path.join(output_folder, f"{filename}.{target_format}")
         
-        # Get flags from our rules, default to simple copy if unknown
+        # Get flags from our rules, default to simple copy if unknown (The "Catch-All")
         cmd_flags = self.FORMAT_RULES.get(target_format, ['-c', 'copy'])
 
         print(f"   🔄 Converting: {filename} -> .{target_format}")
         
-        command = ['ffmpeg', '-i', input_path, *cmd_flags, '-y', output_path]
+        command = ['ffmpeg', '-i', input_path, *cmd_flags, '-ignore_unknown', '-y', output_path]
         
         try:
             # Run ffmpeg (capture_output=True hides spam)
@@ -45,8 +47,13 @@ class FormatMapper:
         # 1. Detect Input Type
         if os.path.isdir(input_path):
             print(f"📂 Scanning folder for videos...")
-            # Recursive search for video files
-            extensions = ('*.mp4', '*.mkv', '*.avi', '*.mov', '*.flv', '*.wmv')
+            
+            # Expanded list to catch almost ALL video formats
+            extensions = (
+                '*.mp4', '*.mkv', '*.avi', '*.mov', '*.flv', '*.wmv', 
+                '*.mpg', '*.mpeg', '*.webm', '*.m4v', '*.ts', '*.vob', '*.3gp'
+            )
+            
             for ext in extensions:
                 tasks.extend(glob.glob(os.path.join(input_path, '**', ext), recursive=True))
         
