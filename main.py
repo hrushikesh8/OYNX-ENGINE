@@ -333,5 +333,14 @@ if __name__ == "__main__":
         or track IDs) to prevent the program from crashing if a user types 
         invalid text.
 
+        and to ensure that the `success` variable is always defined, 
+        it is initialized at the start of the `main()` function. This prevents any `UnboundLocalError` when
+        checking the success status at the end of the function.
+
+        there are 12 different functions that can be called from the main function,
+          each of them has its own error handling and success variable, 
+          but to prevent any unbound local error, the success variable is initialized 
+          at the start of the main function, and then updated based on the success of each operation.
+
 -----------------------------------------------------------------------
 """
