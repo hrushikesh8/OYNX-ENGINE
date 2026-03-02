@@ -258,22 +258,21 @@ def main():
      # --- 12: DIVIDER ---
     elif choice == "12":
         path = input("Enter video path: ").strip('"')
-        try:
-            print("Tip: 1 hour = 3600 seconds")
-            split_time = float(input("Enter split time in seconds: "))
-            
-            divider = VideoDivider()
-            s, p1, p2 = divider.split_at_intermission(path, split_time)
-            
-            if s:
-                print(f"✅ Division Successful!")
-                print(f"   Part 1: {os.path.basename(p1)}")
-                print(f"   Part 2: {os.path.basename(p2)}")
-                success = True
-            else:
-                print("❌ Division failed.")
-        except ValueError:
-            print("Invalid number.")
+        
+        # We removed the 'float()' wrapper so it accepts colons perfectly
+        print("Tip: You can use seconds (3600) OR format like HH:MM:SS (01:00:00)")
+        split_time = input("Enter split time: ").strip()
+        
+        divider = VideoDivider()
+        s, p1, p2 = divider.split_at_intermission(path, split_time)
+        
+        if s:
+            print(f"✅ Division Successful!")
+            print(f"   Part 1: {os.path.basename(p1)}")
+            print(f"   Part 2: {os.path.basename(p2)}")
+            success = True
+        else:
+            print("❌ Division failed.")
 
     # --- 13: EXTRACT AUDIO ---
     elif choice == "13":
