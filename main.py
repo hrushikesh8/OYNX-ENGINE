@@ -83,33 +83,48 @@ def main():
         else:
             print("Invalid selection.")
 
-    # --- 2/3. CLEAN TRACKS ---
+    # --- 2 & 3. CLEAN TRACKS (Audio or Subtitles - Batch/Single) ---
     elif choice in ["2", "3"]:
-        path = input("Enter video path: ").strip('"')
+        path = input("Enter video OR folder path: ").strip('"')
         processor = TrackProcessor()
+        
+        # Smart toggle: If choice 2, do Audio ('a'). If choice 3, do Subtitles ('s').
         stream_type = 'a' if choice == "2" else 's'
         label = "Audio" if choice == "2" else "Subtitle"
 
-        tracks = processor.get_track_info(path, stream_type)
-        if not tracks:
-            print(f"❌ No {label} tracks found.")
-        else:
-            print(f"\nAvailable {label} Tracks:")
-            for i, t in enumerate(tracks):
-                lang = t.get('tags', {}).get('language', 'unknown')
-                title = t.get('tags', {}).get('title', '')
-                print(f"[{i}] {lang} {title}")
+        # 1. Find a sample file to read the tracks from
+        sample_file = path
+        if os.path.isdir(path):
+            videos = scan_folder(path, ['.mkv', '.mp4', '.avi'])
+            if not videos:
+                print("❌ No videos found in this folder.")
+                success = False
+            else:
+                sample_file = videos[0]
+        
+        if sample_file and os.path.exists(sample_file):
+            # 2. Get tracks from the sample file
+            tracks = processor.get_track_info(sample_file, stream_type)
+            
+            if not tracks:
+                print(f"❌ No {label} tracks found in {os.path.basename(sample_file)}.")
+            else:
+                print(f"\nAvailable {label} Tracks (Based on {os.path.basename(sample_file)}):")
+                for i, t in enumerate(tracks):
+                    lang = t.get('tags', {}).get('language', 'unknown')
+                    title = t.get('tags', {}).get('title', '')
+                    print(f"[{i}] {lang} {title}")
 
-            user_input = input(f"Enter ID(s) to KEEP (comma separated, e.g., 0,2): ")
-            try:
-                indices = [int(x.strip()) for x in user_input.split(',')]
-                out_path = os.path.splitext(path)[0] + f"_clean_{label.lower()}.mkv"
-                print("Processing...")
-                if processor.keep_multiple_tracks(path, out_path, indices, stream_type):
-                    print(f"✅ Saved to: {out_path}")
-                    success = True
-            except ValueError:
-                print("Invalid input.")
+                # 3. Get user selection and run the batch processor
+                user_input = input("Enter ID(s) to KEEP (comma separated, e.g., 0,2): ")
+                try:
+                    indices = [int(x.strip()) for x in user_input.split(',')]
+                    
+                    # Run the batch processor!
+                    if processor.process_batch(path, indices, stream_type):
+                        success = True
+                except ValueError:
+                    print("❌ Invalid input. Please enter numbers separated by commas.")
 
     # --- 4. SMART MERGE (Batch or Single) ---
     elif choice == "4":
