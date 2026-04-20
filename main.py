@@ -13,6 +13,7 @@ from src.processors.watermark import Watermarker
 from src.processors.gif_maker import GifMaker
 from src.processors.remaster import VideoRemaster
 from src.processors.extractor import AudioExtractor
+from src.processors.remaster_service import RemasterService
 
 def scan_folder(folder_path, extensions):
     files = []
@@ -39,6 +40,7 @@ def main():
     print("11. Remaster Old Footage (Denoise + Upscale)")
     print("12. Division (Split into 2 Parts)")
     print("13. Extract Audio (MP3/WAV)")
+    print("14. Theatrical Remaster (AI Restoration) [Hidden Test Option]")
 
     choice = input("\nSelect an option (1-13): ")
     
@@ -308,6 +310,59 @@ def main():
         print("\n✨ Operation Completed Successfully")
     else:
         print("\n⚠️ Operation Finished (Check logs for details)")
+     
+    #14. REMASTER SERVICE (MOV) - BONUS FEATURE
+    # This is a hidden option for testing the RemasterService class
+    def function_14_theatrical_remaster():
+        """
+        VidFlow Feature #14: AI Restoration Engine
+        Handles the workflow for upscaling and remastering old movies.
+        """
+    print("\n" + "="*50)
+    print("      VIDFLOW FEATURE #14: THEATRICAL REMASTER      ")
+    print("="*50)
+    
+    # Prompt for input and clean the path (removes quotes if user drags & drops file)
+    movie_path = input("Enter path to the movie file (1980s-2005): ").strip('"').strip("'")
+    
+    if not os.path.exists(movie_path):
+        print(f"[!] Error: File '{movie_path}' not found. Please check the path.")
+        return
+
+    # Initialize the engine from our new service file
+    engine = RemasterService()
+
+    try:
+        # Phase 1: The Sample (The 'Extractor' logic)
+        print("\n[*] Initializing Engine and RTX GPU...")
+        print("[*] Creating a 2-minute theatrical sample for review...")
+        sample_file = engine.generate_sample(movie_path)
+        
+        print(f"\n[DONE] Sample generated at: {sample_file}")
+        print("[?] ACTION REQUIRED: Open the sample and check for:")
+        print("    - Skin textures (no 'plastic' look)")
+        print("    - Color vibrancy")
+        print("    - Cinematic film grain")
+
+        # Phase 2: User Validation
+        choice = input("\nStart full 12-18 hour remaster? (y/n): ").lower()
+
+        if choice == 'y':
+            print("\n" + "!"*50)
+            print("FULL REMASTER IN PROGRESS")
+            print("The system will handle all steps automatically.")
+            print("Please ensure your RTX GPU is well-ventilated.")
+            print("!"*50 + "\n")
+            
+            final_video = engine.start_full_remaster(movie_path)
+            print(f"\n[SUCCESS] Restoration Complete!")
+            print(f"--> Final File: {final_video}")
+        else:
+            print("\n[X] Full process cancelled. Returning to main menu.")
+
+    except Exception as e:
+        print(f"\n[CRITICAL ERROR] The remastering process failed: {e}")
+    
 
 if __name__ == "__main__":
     main()

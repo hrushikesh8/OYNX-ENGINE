@@ -1,15 +1,18 @@
 import subprocess
 import json
+import os
+import glob
+import sys
 
 class TrackProcessor:
-    def get_track_info(self, input_path: str, stream_type='a') -> list:
+    def get_track_info(self, input_path: str, stream_type: str = 'a') -> list:
         """
-        Returns a list of tracks with CODEC info to detect broken streams.
+        Returns a list of tracks (audio or subtitle) found in the video using ffprobe.
+        stream_type: 'a' for audio, 's' for subtitles.
         """
         cmd = [
             'ffprobe', '-v', 'error',
-            # We added 'codec_name' here to spot the 'none' codecs
-            '-show_entries', 'stream=index,codec_name:stream_tags=language,title',
+            '-show_entries', 'stream=index:stream_tags=language,title',
             '-select_streams', stream_type,
             '-of', 'json',
             input_path
@@ -22,57 +25,91 @@ class TrackProcessor:
             print(f"Error reading tracks: {e}")
             return []
 
-    def keep_multiple_tracks(self, input_path, output_path, track_indices, stream_type='a'):
+    def process_batch(self, input_path: str, track_indices: list, stream_type: str = 'a'):
         """
-        Surgically maps only VALID streams. 
-        explicitly skips any stream where codec_name is 'none' or 'unknown'.
+        Handles both single files and entire folders automatically.
+        Removes all tracks of `stream_type` EXCEPT the chosen IDs.
         """
-        # 1. Map the MAIN VIDEO only (usually the first video stream)
-        # We use 0:v:0 to avoid accidentally grabbing cover art images as video
-        cmd = ['ffmpeg', '-i', input_path, '-map', '0:v:0']
-
-        # 2. Map the SELECTED tracks (Audio or Subtitle)
-        # (The ones you chose by ID)
-        for idx in track_indices:
-            cmd.extend(['-map', f'0:{stream_type}:{idx}'])
-
-        # 3. Smart-Map the UNTOUCHED tracks
-        # If you selected Audio, we need to check the Subtitles for errors.
-        other_type = 's' if stream_type == 'a' else 'a'
+        label = "audio" if stream_type == 'a' else "subtitle"
+        tasks = []
         
-        # Get list of all tracks of the other type
-        other_tracks = self.get_track_info(input_path, other_type)
-        
-        print(f"   🔍 Scanning {len(other_tracks)} {other_type.upper()} tracks for errors...")
-
-        valid_count = 0
-        for i, track in enumerate(other_tracks):
-            codec = track.get('codec_name', 'unknown')
-            
-            # THE FIX: If codec is 'none', we DO NOT add it to the command.
-            if codec == 'none' or codec == 'unknown':
-                print(f"   ⚠️ Skipping BROKEN stream #{i} (Codec: {codec})")
-                continue
-            
-            # If valid, map it explicitly by its index
-            cmd.extend(['-map', f'0:{other_type}:{i}'])
-            valid_count += 1
-
-        print(f"   ✅ Keeping {valid_count} valid {other_type.upper()} tracks.")
-
-        # 4. Final settings
-        cmd.extend([
-            '-c', 'copy',           # Copy mode (Fast)
-            '-ignore_unknown',      # Extra safety
-            '-y', output_path
-        ])
-
-        try:
-            subprocess.run(cmd, check=True, capture_output=True)
-            return True
-        except subprocess.CalledProcessError as e:
-            print(f"❌ FFmpeg Logic Error: {e.stderr.decode('utf-8')}")
+        # 1. Detect if it's a folder or a single file
+        if os.path.isdir(input_path):
+            print(f"📂 Scanning folder for videos...")
+            for ext in ['*.mkv', '*.mp4', '*.avi']:
+                tasks.extend(glob.glob(os.path.join(input_path, '**', ext), recursive=True))
+        elif os.path.isfile(input_path):
+            tasks = [input_path]
+        else:
+            print("❌ Invalid path provided.")
             return False
+
+        if not tasks:
+            print("❌ No videos found.")
+            return False
+
+        print(f"🚀 Processing {len(tasks)} files...")
+        print("-" * 40)
+        
+        success_count = 0
+        
+        # 2. Loop through all videos and clean their tracks
+        for vid in tasks:
+            print(f"   ⏳ Cleaning {label.capitalize()}: {os.path.basename(vid)}")
+            out_path = os.path.splitext(vid)[0] + f"_clean_{label}.mkv"
+            
+            # THE SMART FFmpeg COMMAND
+            command = [
+                'ffmpeg', '-i', vid,
+                '-map', '0',                   # Step 1: Keep EVERYTHING (Video, Audio, Subs)
+                '-map', f'-0:{stream_type}'    # Step 2: Deselect ALL tracks of the chosen type ('a' or 's')
+            ]
+            
+            # Step 3: Add back ONLY the specific track IDs the user chose
+            for idx in track_indices:
+                command.extend(['-map', f'0:{stream_type}:{idx}'])
+                
+            command.extend([
+                '-c', 'copy',                  # No re-encoding (Fast)
+                '-ignore_unknown',             # Safety net against broken "codec: none" streams!
+                '-y', out_path
+            ])
+            
+            try:
+                subprocess.run(command, check=True, capture_output=True)
+                print(f"   ✅ Saved: {os.path.basename(out_path)}")
+                success_count += 1
+            except subprocess.CalledProcessError as e:
+                print(f"   ❌ Failed: {os.path.basename(vid)}")
+                print(f"      FFmpeg Error: {e.stderr.decode('utf-8')}")
+
+        print("-" * 40)
+        print(f"🎉 Batch Complete! Successfully processed {success_count}/{len(tasks)} files.")
+        return success_count > 0
+
+# --- STANDALONE EXECUTION LOGIC ---
+if __name__ == "__main__":
+    if len(sys.argv) < 4:
+        print("❌ Error: Missing arguments.")
+        print("Usage: python tracks.py <VideoPath> <Mode> <TrackIDs>")
+        sys.exit(1)
+
+    input_arg = sys.argv[1]
+    mode_arg = sys.argv[2].lower()
+    
+    if mode_arg not in ['a', 's']:
+        print("❌ Error: Mode must be 'a' (Audio) or 's' (Subtitles).")
+        sys.exit(1)
+
+    try:
+        # Convert "0,2" into a list of integers: [0, 2]
+        indices_arg = [int(x.strip()) for x in sys.argv[3].split(',')]
+    except ValueError:
+        print("❌ Error: TrackIDs must be comma-separated numbers (e.g., 0,2).")
+        sys.exit(1)
+
+    processor = TrackProcessor()
+    processor.process_batch(input_arg, indices_arg, mode_arg)
 
 # ==========================================
 # HOW TO USE THIS CODE (EXAMPLE)
@@ -87,3 +124,9 @@ class TrackProcessor:
 # python src/processors/tracks.py "C:\Movies\Avatar.mkv" "a" "0,2"
 #
 # (This keeps Audio Track 0 and 2, removes the rest)
+#
+# BATCH FOLDER EXAMPLE:
+# python src/processors/tracks.py "C:\Movies\Season1" "s" "0"
+#
+# (This looks at every video in the folder and removes all subtitles EXCEPT Track 0)
+# ==========================================
