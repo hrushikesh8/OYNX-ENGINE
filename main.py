@@ -42,7 +42,7 @@ def main():
     print("13. Extract Audio (MP3/WAV)")
     print("14. Theatrical Remaster (AI Restoration) [Hidden Test Option]")
 
-    choice = input("\nSelect an option (1-13): ")
+    choice = input("\nSelect an option (1-14): ")
     
     # ✅ FIX 1: Initialize success variable globally here
     success = False
@@ -272,7 +272,7 @@ def main():
         remaster.enhance_old_footage(path, out)
         success = True
     
-     # --- 12: DIVIDER ---
+# --- 12: DIVIDER ---
     elif choice == "12":
         path = input("Enter video path: ").strip('"')
         
@@ -298,71 +298,66 @@ def main():
 
         extractor = AudioExtractor()
         # Captures success status from the extractor
-        success, out = extractor.extract_audio(path, fmt)
+        success_status, out = extractor.extract_audio(path, fmt)
         
-        if success:
+        if success_status:
             print(f"✅ Audio saved to: {out}")
+            success = True
         else:
             print("❌ Extraction failed.")
 
-    # ✅ FIX 2: Check success safely (it will always exist now)
+    # --- 14: THEATRICAL REMASTER (AI Restoration) ---
+    elif choice == "14":
+        print("\n" + "="*50)
+        print("      VIDFLOW FEATURE #14: THEATRICAL REMASTER      ")
+        print("="*50)
+        
+        # Prompt for input and clean the path
+        movie_path = input("Enter path to the movie file (1980s-2005): ").strip('"').strip("'")
+        
+        if not os.path.exists(movie_path):
+            print(f"[!] Error: File '{movie_path}' not found. Please check the path.")
+        else:
+            # Initialize the engine from our new service file
+            engine = RemasterService()
+
+            try:
+                # Phase 1: The Sample (The 'Extractor' logic)
+                print("\n[*] Initializing Engine and RTX GPU...")
+                print("[*] Creating a 2-minute theatrical sample for review...")
+                sample_file = engine.generate_sample(movie_path)
+                
+                print(f"\n[DONE] Sample generated at: {sample_file}")
+                print("[?] ACTION REQUIRED: Open the sample and check for:")
+                print("    - Skin textures (no 'plastic' look)")
+                print("    - Color vibrancy")
+                print("    - Cinematic film grain")
+
+                # Phase 2: User Validation
+                sub_choice = input("\nStart full 12-18 hour remaster? (y/n): ").lower()
+
+                if sub_choice == 'y':
+                    print("\n" + "!"*50)
+                    print("FULL REMASTER IN PROGRESS")
+                    print("The system will handle all steps automatically.")
+                    print("Please ensure your RTX GPU is well-ventilated.")
+                    print("!"*50 + "\n")
+                    
+                    final_video = engine.start_full_remaster(movie_path)
+                    print(f"\n[SUCCESS] Restoration Complete!")
+                    print(f"--> Final File: {final_video}")
+                    success = True
+                else:
+                    print("\n[X] Full process cancelled. Returning to main menu.")
+
+            except Exception as e:
+                print(f"\n[CRITICAL ERROR] The remastering process failed: {e}")
+
+    # ✅ FINAL CHECK: This must be at the very end of the main() function
     if success:
         print("\n✨ Operation Completed Successfully")
     else:
         print("\n⚠️ Operation Finished (Check logs for details)")
-     
-    #14. REMASTER SERVICE (MOV) - BONUS FEATURE
-    # This is a hidden option for testing the RemasterService class
-    def function_14_theatrical_remaster():
-        """
-        VidFlow Feature #14: AI Restoration Engine
-        Handles the workflow for upscaling and remastering old movies.
-        """
-    print("\n" + "="*50)
-    print("      VIDFLOW FEATURE #14: THEATRICAL REMASTER      ")
-    print("="*50)
-    
-    # Prompt for input and clean the path (removes quotes if user drags & drops file)
-    movie_path = input("Enter path to the movie file (1980s-2005): ").strip('"').strip("'")
-    
-    if not os.path.exists(movie_path):
-        print(f"[!] Error: File '{movie_path}' not found. Please check the path.")
-        return
-
-    # Initialize the engine from our new service file
-    engine = RemasterService()
-
-    try:
-        # Phase 1: The Sample (The 'Extractor' logic)
-        print("\n[*] Initializing Engine and RTX GPU...")
-        print("[*] Creating a 2-minute theatrical sample for review...")
-        sample_file = engine.generate_sample(movie_path)
-        
-        print(f"\n[DONE] Sample generated at: {sample_file}")
-        print("[?] ACTION REQUIRED: Open the sample and check for:")
-        print("    - Skin textures (no 'plastic' look)")
-        print("    - Color vibrancy")
-        print("    - Cinematic film grain")
-
-        # Phase 2: User Validation
-        choice = input("\nStart full 12-18 hour remaster? (y/n): ").lower()
-
-        if choice == 'y':
-            print("\n" + "!"*50)
-            print("FULL REMASTER IN PROGRESS")
-            print("The system will handle all steps automatically.")
-            print("Please ensure your RTX GPU is well-ventilated.")
-            print("!"*50 + "\n")
-            
-            final_video = engine.start_full_remaster(movie_path)
-            print(f"\n[SUCCESS] Restoration Complete!")
-            print(f"--> Final File: {final_video}")
-        else:
-            print("\n[X] Full process cancelled. Returning to main menu.")
-
-    except Exception as e:
-        print(f"\n[CRITICAL ERROR] The remastering process failed: {e}")
-    
 
 if __name__ == "__main__":
     main()
@@ -373,43 +368,42 @@ if __name__ == "__main__":
                            CODE EXPLANATION
 -----------------------------------------------------------------------
 
-1.  **Architecture (Modular Design)**:
-    -   This `main.py` acts as the **Orchestrator**. It does not contain the 
+1.  Architecture (Modular Design):
+    -   This `main.py` acts as the Orchestrator. It does not contain the 
         heavy video processing logic itself. 
-    -   Instead, it imports specialized classes (e.g., `VideoEditor`, `TrackProcessor`) 
-        from the `src.processors` package. This adheres to the "Separation of Concerns" 
-        principle, making the project easy to maintain and expand.
+    -   Instead, it imports specialized classes (e.g., `VideoEditor`, 
+        `TrackProcessor`, `RemasterService`) from the `src.processors` package. 
+        This adheres to the "Separation of Concerns" principle, making the 
+        project highly maintainable, readable, and easy to expand.
 
-2.  **Dependency Check (`SystemUtils`)**:
+2.  Dependency Check (`SystemUtils`):
     -   Before showing the menu, the script runs `check_ffmpeg_availability()`.
-    -   This ensures the core engine (FFmpeg) is installed on the host machine, 
-        preventing crashes later in the execution.
+    -   This ensures the core engine (FFmpeg) is installed and accessible 
+        on the host machine, preventing critical crashes later in the execution.
 
-3.  **The `scan_folder` Utility**:
-    -   A helper function used for batch operations (like Options 4 & 5).
-    -   It uses `glob` to recursively find all video files in a directory, 
-        allowing the user to process entire seasons of shows or playlists at once.
+3.  Hybrid Processing (Batch & Single):
+    -   The engine features smart path detection utilizing the `scan_folder` helper.
+    -   Many modules (Conversion, Track Cleaning, Merging, Extraction) automatically 
+        detect whether the user provided a single file or an entire directory.
+    -   If a folder is provided, the script recursively finds all compatible media 
+        files and processes entire seasons or playlists simultaneously.
 
-4.  **Input Handling & Dispatch**:
-    -   The script uses a simple CLI (Command Line Interface) menu.
-    -   It captures user input (`choice`) and uses an `if-elif` structure to 
-        route the request to the correct processor.
-    -   Example: If user selects '7', the `VideoEditor` class is instantiated 
-        to handle the splitting logic.
+4.  Input Handling & Dispatch (14 Modules):
+    -   The script uses a clear CLI (Command Line Interface) menu.
+    -   It captures user input (`choice`) and uses an `if-elif` routing structure 
+        to direct the request to 1 of 14 distinct specialized processors.
+    -   Example: If the user selects '14', the `RemasterService` class is 
+        instantiated to handle the AI restoration logic.
 
-5.  **Error Handling**:
-    -   `try-except` blocks are placed around numerical inputs (like timestamps 
-        or track IDs) to prevent the program from crashing if a user types 
-        invalid text.
-
-        and to ensure that the `success` variable is always defined, 
-        it is initialized at the start of the `main()` function. This prevents any `UnboundLocalError` when
-        checking the success status at the end of the function.
-
-        there are 12 different functions that can be called from the main function,
-          each of them has its own error handling and success variable, 
-          but to prevent any unbound local error, the success variable is initialized 
-          at the start of the main function, and then updated based on the success of each operation.
+5.  State Management & Safety (`success` Flag):
+    -   To ensure program stability, a `success` variable is initialized to `False` 
+        at the very start of the `main()` function. 
+    -   While each of the 14 functions contains its own specific error handling 
+        (e.g., catching invalid timestamps, broken codecs, or bad inputs), they all 
+        report back to this global flag.
+    -   If an operation succeeds, it explicitly updates `success = True`. This 
+        guarantees that the final completion check at the end of the script will 
+        never throw an `UnboundLocalError`.
 
 -----------------------------------------------------------------------
 """
