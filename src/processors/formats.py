@@ -116,3 +116,63 @@ class FormatMapper:
 #        target_format="avi"
 #    )
 # ==========================================
+
+
+
+
+
+
+# ==============================================================================
+# 🎬 FEATURE: THE VIDEO FORMAT CONVERTER
+# ==============================================================================
+#
+# 📝 WHAT IS THIS FILE?
+#    This file is called 'formats.py', and its job is "Transformation." 
+#    It takes a video in one format (like an old .AVI or .MKV) and changes it 
+#    into a modern format (like .MP4). This is the most basic yet essential 
+#    part of the engine, ensuring that any file you have can be played on 
+#    your phone, TV, or server without compatibility errors.
+#
+# 📘 TECHNICAL DOCUMENTATION & FEATURE OVERVIEW
+# ------------------------------------------------------------------------------
+#
+# 1. FUNCTIONALITY:
+#    The Formats Engine uses FFmpeg to re-wrap or re-encode video streams. 
+#    It handles 'Transcoding' (changing the codec) and 'Transmuxing' 
+#    (changing the container). It is designed to be a loss-less or high-bitrate 
+#    bridge between different media standards.
+#
+# 2. KEY FEATURES:
+#    - Multi-Container Support: Handles .mp4, .mkv, .mov, .avi, and .flv.
+#    - Codec Optimization: Primarily uses H.264 for maximum compatibility.
+#    - Stream Mapping: Automatically identifies and carries over the best 
+#      available video and audio streams from the source.
+#    - Fast-Transmuxing: Skips encoding if the source and target are compatible.
+#
+# 3. APPLICATIONS:
+#    - Library Standardization: Converting a messy folder of different file 
+#      types into a uniform MP4 library for a server.
+#    - Device Compatibility: Fixing videos that "won't open" on specific 
+#      players by converting them to standard formats.
+#    - Editing Prep: Converting high-compression files into formats that 
+#      are easier for editing software to handle.
+#
+# 4. PERFORMANCE & RESOURCE IMPACT:
+#    - CPU/GPU Usage: Variable. If "copying" data, it is instant and uses 0% 
+#      resources. If "converting," it uses a steady amount of CPU/GPU.
+#    - Disk I/O: Moderate. It reads the old file and writes the new one 
+#      simultaneously.
+#
+# 5. FUTURE SCOPE & IMPROVEMENTS:
+#    - Batch Conversion: Implementing a "Folder-to-MP4" sweep.
+#    - Preset Profiles: Adding specific "Apple TV", "Android", or "PlayStation" 
+#      export settings.
+#    - Hardware Auto-Detect: Automatically switching between NVENC (Nvidia) 
+#      and QuickSync (Intel) for the fastest possible conversion.
+#
+# 6. HOW TO USE THIS MODULE:
+#    Syntax:  python src/processors/formats.py <InputPath> <TargetExtension>
+#    Example: python src/processors/formats.py "Holiday_Video.avi" "mp4"
+#    Output:  A perfectly compatible MP4 version of your original video.
+#
+# ==============================================================================
