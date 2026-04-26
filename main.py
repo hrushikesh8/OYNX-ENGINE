@@ -338,8 +338,16 @@ def main():
             target_folder = get_path("Enter parent directory to archive: ")
             
             if os.path.exists(target_folder):
+                print("\n--- Archive Mode ---")
+                print(" [1] Package Only (Lightning Fast - Best for Videos/Media)")
+                print(" [2] Compress & Package (Slower - Best for Docs/Code)")
+                mode_choice = input("Select mode (1/2) [Default: 1]: ").strip()
+                
+                # If they select 2, we turn compression ON. Otherwise, it stays OFF.
+                do_compress = True if mode_choice == "2" else False
+                
                 archiver = FolderArchiver()
-                if archiver.batch_zip_folders(target_folder): 
+                if archiver.batch_zip_folders(target_folder, compress=do_compress): 
                     success = True
             else:
                 print(f"❌ Path not found: {target_folder}")
