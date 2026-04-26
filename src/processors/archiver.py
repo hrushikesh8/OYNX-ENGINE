@@ -1,6 +1,6 @@
-import shutil
 import os
 import sys
+import zipfile
 
 class FolderArchiver:
     """
@@ -10,19 +10,15 @@ class FolderArchiver:
     Optimized for preparing high-volume media assets for server transfers.
     """
 
-    def batch_zip_folders(self, parent_directory: str):
+    def batch_zip_folders(self, parent_directory: str, compress: bool = False):
         """
         Scans a parent directory and converts every immediate sub-folder 
-        into an individual, high-compatibility .zip file.
-        
-        Logic Flow:
-        1. Validate path: Ensures the target folder exists and is accessible.
-        2. Identify Targets: Iterates through contents to isolate directories.
-        3. Compression: Executes shutil's archive utility on each target.
-        4. Reporting: Provides a success count and error tracking.
+        into an individual .zip file.
         
         Args:
             parent_directory (str): The path containing the folders to be zipped.
+            compress (bool): If True, uses DEFLATE compression. If False, uses 
+                             STORE mode for maximum packaging speed (best for video).
         """
         
         # Security Check: Ensure the target path actually exists
@@ -30,11 +26,14 @@ class FolderArchiver:
             print(f"❌ Error: Specified path does not exist -> {parent_directory}")
             return False
 
-        print(f"📦 VidFlow Archiver Service: Initializing...")
+        # Set the dynamic UI string and Zip Mode based on user choice
+        mode_str = "High-Compression Mode" if compress else "High-Speed Store Mode"
+        zip_engine = zipfile.ZIP_DEFLATED if compress else zipfile.ZIP_STORED
+
+        print(f"📦 VidFlow Archiver Service: Initializing ({mode_str})...")
         print(f"📂 Scanning Directory: {parent_directory}")
         
         try:
-            # Retrieve all items within the parent directory
             items = os.listdir(parent_directory)
         except PermissionError:
             print("❌ Access Denied: Insufficient permissions to read this directory.")
@@ -44,18 +43,22 @@ class FolderArchiver:
         error_count = 0
 
         for item in items:
-            # Construct absolute path for the item
             item_path = os.path.join(parent_directory, item)
             
-            # Feature Logic: Only process folders. Skip existing files and .zip archives.
             if os.path.isdir(item_path):
                 try:
-                    print(f"⚡ Zipping folder -> {item}...")
+                    action_verb = "Compressing" if compress else "Packaging"
+                    print(f"⚡ {action_verb} folder -> {item}...")
                     
-                    # shutil.make_archive parameters:
-                    # (output_filename, format, root_dir)
-                    # This creates item.zip in the same parent directory.
-                    shutil.make_archive(item_path, 'zip', item_path)
+                    zip_file_path = f"{item_path}.zip"
+                    
+                    # 🚀 DUAL-MODE ENGINE: Uses whatever engine the user selected
+                    with zipfile.ZipFile(zip_file_path, 'w', zip_engine) as zipf:
+                        for root, _, files in os.walk(item_path):
+                            for file in files:
+                                file_path = os.path.join(root, file)
+                                archive_name = os.path.relpath(file_path, item_path)
+                                zipf.write(file_path, archive_name)
                     
                     success_count += 1
                 except Exception as e:
@@ -73,21 +76,20 @@ class FolderArchiver:
 
 # --- STANDALONE EXECUTION LOGIC ---
 if __name__ == "__main__":
-    # Check for directory argument
     if len(sys.argv) < 2:
-        print("Usage: python archiver.py <target_parent_directory>")
+        print("Usage: python archiver.py <target_parent_directory> [compress: y/n]")
         sys.exit(1)
 
     target_path = sys.argv[1]
+    do_compress = True if (len(sys.argv) > 2 and sys.argv[2].lower() == 'y') else False
     
-    # Initialize the engine
     archiver = FolderArchiver()
-    
-    # Execute batch process
-    if archiver.batch_zip_folders(target_path):
+    if archiver.batch_zip_folders(target_path, compress=do_compress):
         print("🎉 All archives generated successfully.")
     else:
         print("⚠️ No folders were processed. Check the directory path.")
+
+
 
 # ==========================================
 # HOW TO USE THIS CODE (EXAMPLE)
@@ -105,13 +107,10 @@ if __name__ == "__main__":
 # - Assets.zip
 # - Final_Exports.zip
 
-
-
-
-
 # ==============================================================================
-# 📦 FEATURE: THE BATCH FOLDER ARCHIVER
+# 📦 FEATURE: THE BATCH FOLDER ARCHIVER (DUAL-MODE)
 # ==============================================================================
+
 #
 # 📝 WHAT IS THIS FILE?
 #    This file is called 'archiver.py', and its job is "Logistics & Storage." 
@@ -124,15 +123,15 @@ if __name__ == "__main__":
 # ------------------------------------------------------------------------------
 #
 # 1. FUNCTIONALITY:
-#    The Archiver uses parallel-ready logic to handle mass-scale compression. 
+#    The Archiver uses parallel-ready logic to handle mass-scale packaging. 
 #    It iterates through a parent directory, identifies only the folders, and 
-#    executes a 1-to-1 mapping to ZIP archives. It is built to be a "silent" 
-#    background worker for large data migrations.
+#    executes a 1-to-1 mapping to ZIP archives using 'Store Mode' (ZIP_STORED)
+#    to bypass unnecessary compression math on already-compressed media files.
 #
 # 2. KEY FEATURES:
 #    - Folder Isolation: Smart enough to skip loose files and only zip folders.
 #    - Directory Preservation: Keeps all internal timestamps and folder structures.
-#    - shutil Integration: Uses high-level disk I/O for faster zipping of media.
+#    - Native Packaging: Uses high-level disk I/O for lightning-fast bundling.
 #
 # 3. APPLICATIONS:
 #    - Project Transfers: Preparing an entire season of a show for cloud upload.
@@ -140,8 +139,8 @@ if __name__ == "__main__":
 #    - Media Logistics: Organizing complex asset folders into clean archives.
 #
 # 4. PERFORMANCE & RESOURCE IMPACT:
-#    - Disk I/O: Extremely High. Performance depends on your SSD/HDD speed.
-#    - CPU/RAM: Low. It streams data directly from the disk to the zip file.
+#    - Disk I/O: Extremely High. Performance depends entirely on your SSD/HDD speed.
+#    - CPU/RAM: Near zero. Bypasses compression to stream data directly to the zip.
 #
 # 5. FUTURE SCOPE & IMPROVEMENTS:
 #    - Encryption: Adding passwords to the ZIP files for secure sharing.

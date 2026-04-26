@@ -68,7 +68,28 @@ if __name__ == "__main__":
     wm = Watermarker()
     if wm.add_image_watermark(vid, img, out, pos):
         print(f"✅ Branding Complete: {out}")
+    def remove_watermark(self, video_path: str, output_path: str, x: int, y: int, w: int, h: int):
+        """
+        🚀 NEW: Removes a watermark using AI-style in-painting (delogo).
+        Requires exact coordinates (x, y) and dimensions (width, height) of the logo.
+        """
+        # --- DELOGO COMMAND ---
+        # -vf delogo=x:y:w:h : Targets a specific box and blurs the surrounding pixels over it.
+        command = [
+            'ffmpeg', '-i', video_path,
+            '-vf', f"delogo=x={x}:y={y}:w={w}:h={h}",
+            '-c:a', 'copy',
+            '-avoid_negative_ts', 'make_zero',
+            '-y', output_path
+        ]
 
+        try:
+            print(f"🧹 VidFlow Branding: Scrubbing watermark from {os.path.basename(video_path)}...")
+            subprocess.run(command, check=True, capture_output=True)
+            return True
+        except subprocess.CalledProcessError as e:
+            print(f"❌ Error during watermark removal: {e.stderr.decode()}")
+            return False
 # ==========================================
 # HOW TO USE THIS CODE (EXAMPLE)
 # ==========================================

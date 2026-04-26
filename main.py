@@ -1,6 +1,7 @@
 import os
 import glob
 import sys
+import time
 from src.utils.system import SystemUtils
 from src.processors.formats import FormatMapper
 from src.processors.tracks import TrackProcessor
@@ -13,397 +14,437 @@ from src.processors.watermark import Watermarker
 from src.processors.gif_maker import GifMaker
 from src.processors.remaster import VideoRemaster
 from src.processors.extractor import AudioExtractor
+from src.processors.archiver import FolderArchiver
 from src.processors.remaster_service import RemasterService
 
+# ==============================================================================
+# LIBRARY & ARCHITECTURE EXPLANATION
+# ==============================================================================
+# The imports above represent the "Separation of Concerns" in the VidFlow Engine.
+# Instead of cramming FFmpeg commands into this main file, we import dedicated 
+# Classes (like `VideoEditor` or `AudioExtractor`) from the `src.processors` folder.
+# This keeps main.py acting strictly as an 'Orchestrator' or 'Router'. It asks the 
+# user what they want, and then hands the actual work off to the imported tools.
+# ==============================================================================
+
+
 def scan_folder(folder_path, extensions):
+    """
+    Helper Function: Recursively finds files matching extensions in a folder.
+    This enables the 'Batch Processing' logic across the entire engine.
+    """
     files = []
     for ext in extensions:
         files.extend(glob.glob(os.path.join(glob.escape(folder_path), '**', f'*{ext}'), recursive=True))
     return files
 
+def get_path(prompt="Enter file or folder path: "):
+    """
+    Helper Function: Smart helper to strip quotes from drag-and-dropped paths.
+    Windows adds quotes when you drag a file into the terminal; this removes them.
+    """
+    return input(prompt).strip('"').strip("'")
+
 def main():
+    # Pre-flight check: Ensure FFmpeg is installed before showing the menu
     if not SystemUtils.check_ffmpeg_availability():
         print("❌ CRITICAL: FFmpeg not found. Please install it and add to PATH.")
         return
 
-    print("\n=== 🎬 VidFlow Engine v1.5 (Enterprise) ===")
-    print("1.  Convert Video Format")
-    print("2.  Clean Audio Tracks (Multi-Select)")
-    print("3.  Clean Subtitle Tracks (Multi-Select)")
-    print("4.  Batch Merge Subtitles (Auto-Match)")
-    print("5.  Smart Compressor (Reduce Audio Size)")
-    print("6.  Auto-Create Shorts (9:16 Layout)")
-    print("7.  Split Video for Social Media")
-    print("8.  Stitch/Join Multiple Videos")
-    print("9.  Add Watermark/Logo")
-    print("10. Create High-Quality GIF")
-    print("11. Remaster Old Footage (Denoise + Upscale)")
-    print("12. Division (Split into 2 Parts)")
-    print("13. Extract Audio (MP3/WAV)")
-    print("14. Theatrical Remaster (AI Restoration) [Hidden Test Option]")
+    # The Master Loop: Keeps the application running until the user types '0'
+    while True:
+        print("\n" + "="*55)
+        print(" 🎬 VIDFLOW ENGINE v1.5 (MASTER ORCHESTRATOR) ")
+        print("="*55)
+        print(" --- FORMATS & TRACKS ---")
+        print("  1.  Format Converter (Smart Single/Batch)")
+        print("  2.  Track Cleaner: Audio (Remove unwanted dubs)")
+        print("  3.  Track Cleaner: Subtitles (Purge extra subs)")
+        print(" --- MERGE & STITCH ---")
+        print("  4.  Stream Merger: Audio + Video Sync")
+        print("  5.  Stream Merger: Mux/Embed Subtitles")
+        print("  6.  Video Stitcher: Concat Parts Seamlessly")
+        print(" --- EDIT & DIVIDE ---")
+        print("  7.  Divider: Theatrical Intermission (2-Parts)")
+        print("  8.  Divider: Chunk for WhatsApp/Reels (30s)")
+        print("  9.  Editor: Split by Specific Time Segments")
+        print(" 10.  Editor: Convert to 9:16 Shorts (Blur BG)")
+        print(" --- BRANDING & EXPORT ---")
+        print(" 11.  Watermarker: Burn Logo (With Position/Batch)")
+        print(" 12.  Watermarker: Remove Logo (In-painting/Delogo)") # 🚀 NEW
+        print(" 13.  GIF Maker: High-Quality Palette Engine")
+        print(" 14.  Compressor: Smart Size Reduction")
+        print(" --- EXTRACTION (HARVESTER) ---")
+        print(" 15.  Extractor: Single Audio Rip")
+        print(" 16.  Extractor: Mass Harvester (Folder Batch Rip)")
+        print(" 17.  Extractor: Target Specific Track ID")
+        print(" --- AI RESTORATION & ARCHIVAL ---")
+        print(" 18.  Remaster: Standard Enhancement")
+        print(" 19.  Remaster: Theatrical AI Restoration (RTX)")
+        print(" 20.  Archiver: Project Packaging & Cleanup") # 🚀 NEW
+        print("  0.  Exit VidFlow")
+        print("="*55)
 
-    choice = input("\nSelect an option (1-14): ")
-    
-    # ✅ FIX 1: Initialize success variable globally here
-    success = False
+        choice = input("Select an Engine (0-20): ").strip()
+        
+        if choice == '0':
+            print("\nShutting down VidFlow... Get some rest!")
+            sys.exit(0)
 
-    # --- 1. CONVERT ---
-    # --- 1. CONVERT (Hybrid Mode) ---
-    if choice == "1":
-        print("\n--- Conversion Mode ---")
-        print("1. Batch Convert (Entire Folder)")
-        print("2. Single Convert (One File)")
-        sub_choice = input("Select mode (1/2): ")
-        
-        processor = FormatMapper()
-        
-        # Common inputs
-        fmt = input("Target format (mp4/mkv/avi): ").lower()
-        
-        # MODE 1: BATCH
-        if sub_choice == "1":
-            folder_path = input("Enter Source Folder: ").strip('"')
-            if os.path.exists(folder_path):
-                # Create a "converted" folder inside the source
-                output_dir = os.path.join(folder_path, "converted")
-                processor.process_input(folder_path, output_dir, fmt)
-                success = True
-            else:
-                print("❌ Folder not found.")
+        # Global success flag used for clean logging at the end of the loop
+        success = False
 
-        # MODE 2: SINGLE
-        elif sub_choice == "2":
-            file_path = input("Enter File Path: ").strip('"')
-            if os.path.exists(file_path):
-                # Create a "converted" folder in the same directory as the file
-                output_dir = os.path.join(os.path.dirname(file_path), "converted")
-                processor.process_input(file_path, output_dir, fmt)
-                success = True
-            else:
-                print("❌ File not found.")
-        
-        else:
-            print("Invalid selection.")
-
-    # --- 2 & 3. CLEAN TRACKS (Audio or Subtitles - Batch/Single) ---
-    elif choice in ["2", "3"]:
-        path = input("Enter video OR folder path: ").strip('"')
-        processor = TrackProcessor()
-        
-        # Smart toggle: If choice 2, do Audio ('a'). If choice 3, do Subtitles ('s').
-        stream_type = 'a' if choice == "2" else 's'
-        label = "Audio" if choice == "2" else "Subtitle"
-
-        # 1. Find a sample file to read the tracks from
-        sample_file = path
-        if os.path.isdir(path):
-            videos = scan_folder(path, ['.mkv', '.mp4', '.avi'])
-            if not videos:
-                print("❌ No videos found in this folder.")
-                success = False
-            else:
-                sample_file = videos[0]
-        
-        if sample_file and os.path.exists(sample_file):
-            # 2. Get tracks from the sample file
-            tracks = processor.get_track_info(sample_file, stream_type)
+        # ---------------------------------------------------------
+        # 1. FORMAT CONVERTER (SMART DETECTION)
+        # ---------------------------------------------------------
+        # Changes the container of a video (e.g., MKV to MP4).
+        # We use `os.path.isdir` to detect if the user provided a folder.
+        # If it's a folder, we batch convert everything inside it automatically.
+        if choice == "1":
+            target_path = get_path()
+            fmt = input("Target format (mp4/mkv/avi): ").lower()
+            processor = FormatMapper()
             
-            if not tracks:
-                print(f"❌ No {label} tracks found in {os.path.basename(sample_file)}.")
+            if os.path.isdir(target_path):
+                # Batch Mode: Create an output folder inside the source directory
+                out_dir = os.path.join(target_path, "converted")
+                processor.process_input(target_path, out_dir, fmt)
+                success = True
+            elif os.path.isfile(target_path):
+                # Single Mode: Create an output folder next to the source file
+                out_dir = os.path.join(os.path.dirname(target_path), "converted")
+                processor.process_input(target_path, out_dir, fmt)
+                success = True
             else:
-                print(f"\nAvailable {label} Tracks (Based on {os.path.basename(sample_file)}):")
-                for i, t in enumerate(tracks):
-                    lang = t.get('tags', {}).get('language', 'unknown')
-                    title = t.get('tags', {}).get('title', '')
-                    print(f"[{i}] {lang} {title}")
+                print("❌ Path not found.")
 
-                # 3. Get user selection and run the batch processor
-                user_input = input("Enter ID(s) to KEEP (comma separated, e.g., 0,2): ")
-                try:
-                    indices = [int(x.strip()) for x in user_input.split(',')]
+        # ---------------------------------------------------------
+        # 2 & 3. TRACK CLEANER (AUDIO / SUBTITLES)
+        # ---------------------------------------------------------
+        # Purges unwanted languages from a movie file to save server space.
+        # It scans the first file it finds to show the user a list of available tracks.
+        elif choice in ["2", "3"]:
+            target_path = get_path()
+            processor = TrackProcessor()
+            
+            # Map choice 2 to Audio ('a') and choice 3 to Subtitles ('s')
+            stream_type = 'a' if choice == "2" else 's'
+            
+            # Smart logic to grab a sample file for track identification
+            sample_file = target_path
+            if os.path.isdir(target_path):
+                videos = scan_folder(target_path, ['.mkv', '.mp4', '.avi'])
+                sample_file = videos[0] if videos else None
+            
+            if sample_file and os.path.exists(sample_file):
+                # Fetch metadata using ffprobe via the imported TrackProcessor
+                tracks = processor.get_track_info(sample_file, stream_type)
+                if tracks:
+                    print(f"\nAvailable Tracks (Based on {os.path.basename(sample_file)}):")
+                    for i, t in enumerate(tracks):
+                        print(f"[{i}] {t.get('tags', {}).get('language', 'unknown')} - {t.get('tags', {}).get('title', '')}")
                     
-                    # Run the batch processor!
-                    if processor.process_batch(path, indices, stream_type):
+                    # Capture user's desired track IDs and convert to integer list
+                    user_input = input("Enter ID(s) to KEEP (e.g., 0,2): ")
+                    indices = [int(x.strip()) for x in user_input.split(',') if x.strip().isdigit()]
+                    
+                    if processor.process_batch(target_path, indices, stream_type):
                         success = True
-                except ValueError:
-                    print("❌ Invalid input. Please enter numbers separated by commas.")
+                else:
+                    print("❌ No tracks found.")
 
-    # --- 4. SMART MERGE (Batch or Single) ---
-    elif choice == "4":
-        print("\n--- Merge Mode ---")
-        print("1. Batch Merge (Folder - Auto Match by Name)")
-        print("2. Single Merge (Manually Select Files)")
-        sub_choice = input("Select mode (1/2): ")
-
-        merger = StreamMerger()
-
-        # MODE 1: BATCH (Folder)
-        if sub_choice == "1":
-            folder = input("Enter folder path: ").strip('"')
-            merge_type = input("Merge Subtitles (s) or Audio (a)? ").lower()
+        # ---------------------------------------------------------
+        # 4 & 5. STREAM MERGER
+        # ---------------------------------------------------------
+        # Muxes external Audio or Subtitle files into a Video container.
+        # This operates losslessly (no re-encoding) to instantly sync streams.
+        elif choice in ["4", "5"]:
+            vid_path = get_path("Enter Video path: ")
+            merger = StreamMerger()
             
-            videos = scan_folder(folder, ['.mkv', '.mp4', '.avi'])
-            print(f"📂 Found {len(videos)} videos. Scanning for matches...")
+            # Option 4: Audio Merging
+            if choice == "4":
+                aud_path = get_path("Enter Audio path (.wav, .mp3): ")
+                out = os.path.splitext(vid_path)[0] + "_merged.mkv"
+                if merger.merge_video_audio(vid_path, aud_path, out): success = True
+            
+            # Option 5: Subtitle Embedding (Softcoding)
+            else:
+                sub_path = get_path("Enter Subtitle path (.srt, .ass): ")
+                out = os.path.splitext(vid_path)[0] + "_subbed.mkv"
+                if merger.mux_subtitles(vid_path, sub_path, out): success = True
+
+        # ---------------------------------------------------------
+        # 6. VIDEO STITCHER
+        # ---------------------------------------------------------
+        # Uses the 'concat demuxer' to join First_Half.mp4 and Second_Half.mp4.
+        elif choice == "6":
+            folder = get_path("Enter folder containing parts: ")
+            ext = input("Extension of parts (e.g., .mp4): ")
+            
+            # Gathers all parts in alphabetical order
+            files = sorted(glob.glob(os.path.join(folder, f"*{ext}")))
+            if files:
+                out_name = input("Output filename (e.g., FullMovie.mp4): ")
+                stitcher = VideoStitcher()
+                if stitcher.concat_videos(files, os.path.join(folder, out_name)): success = True
+
+        # ---------------------------------------------------------
+        # 7 & 8 & 9. DIVIDER & EDITOR SPLITTING
+        # ---------------------------------------------------------
+        # Handles all operations related to cutting a video.
+        elif choice in ["7", "8", "9"]:
+            target_path = get_path()
+            
+            # Option 7: Intermission (Cut exactly at a specified timestamp)
+            if choice == "7":
+                split_time = input("Enter intermission time (HH:MM:SS or seconds): ")
+                divider = VideoDivider()
+                s, p1, p2 = divider.split_at_intermission(target_path, split_time)
+                if s: success = True
+                
+            # Option 8: Chunking (Cut entire video into repeating segments like 30s)
+            elif choice == "8":
+                sec = input("Enter seconds per chunk (e.g., 30): ")
+                divider = VideoDivider()
+                if divider.split_by_chunks(target_path, sec): success = True
+                
+            # Option 9: Extraction (Pull one specific timeframe out of the movie)
+            elif choice == "9":
+                sec = int(input("Enter duration per segment (seconds): "))
+                editor = VideoEditor()
+                if editor.split_by_time(target_path, sec): success = True
+
+        # ---------------------------------------------------------
+        # 10. EDITOR: SHORTS
+        # ---------------------------------------------------------
+        # Converts standard 16:9 widescreen video into 9:16 vertical video.
+        # Applies a professional gaussian blur to the background automatically.
+        elif choice == "10":
+            target_path = get_path()
+            editor = VideoEditor()
+            out = os.path.splitext(target_path)[0] + "_shorts.mp4"
+            if editor.convert_to_shorts_style(target_path, out): success = True
+
+        # ---------------------------------------------------------
+        # 11. WATERMARK (SMART SINGLE/BATCH)
+        # ---------------------------------------------------------
+        # Overlays a PNG logo onto the video frames (requires re-encoding).
+        # We upgraded this with Smart Folder Detection to brand massive batches.
+        elif choice == "11":
+            target_path = get_path("Enter Video OR Folder path: ")
+            img = get_path("Enter Logo path (.png): ")
+            pos = input("Position (br, bl, tr, tl, center) [Default: br]: ") or "br"
+            wm = Watermarker()
+            
+            if os.path.isdir(target_path):
+                # Loop through every video in the folder and brand it
+                vids = scan_folder(target_path, ['.mp4', '.mkv'])
+                for v in vids:
+                    out = os.path.splitext(v)[0] + "_branded.mp4"
+                    wm.add_image_watermark(v, img, out, pos)
+                success = True
+            elif os.path.isfile(target_path):
+                # Brand a single file
+                out = os.path.splitext(target_path)[0] + "_branded.mp4"
+                if wm.add_image_watermark(target_path, img, out, pos): success = True
+
+        # ---------------------------------------------------------
+        # 12. GIF MAKER
+        # ---------------------------------------------------------
+        # Generates loopable animations using a two-pass palette algorithm.
+        # Presets allow the user to balance generation speed vs visual quality.
+        elif choice == "12":
+            target_path = get_path()
+            start = input("Start time (e.g., 00:00:10): ")
+            dur = input("Duration in sec: ")
+            preset = input("Preset (ultrafast, fast, medium) [Default: fast]: ") or "fast"
+            maker = GifMaker()
+            out = os.path.splitext(target_path)[0] + ".gif"
+            if maker.create_gif(target_path, out, start, dur, preset=preset): success = True
+
+        # ---------------------------------------------------------
+        # 13. COMPRESSOR
+        # ---------------------------------------------------------
+        # Intelligently scans a directory for massive files (default > 1.5GB) 
+        # and recompresses their audio tracks to save space without ruining video quality.
+        elif choice == "13":
+            folder = get_path("Enter folder path to scan for compression: ")
+            compressor = VideoCompressor()
+            videos = scan_folder(folder, ['.mkv', '.mp4', '.mov'])
+            threshold = float(input("Compress files larger than (GB) [Default: 1.5]: ") or 1.5)
             
             count = 0
-            for vid_path in videos:
-                base = os.path.splitext(vid_path)[0]
-                found_match = None
-                
-                # Logic for Subtitles
-                if merge_type == 's':
-                    for ext in ['.srt', '.ass']:
-                        if os.path.exists(base + ext):
-                            found_match = base + ext
-                            break
-                    if found_match:
-                        out = base + "_subbed.mkv"
-                        if merger.mux_subtitles(vid_path, found_match, out): count += 1
+            for vid in videos:
+                if compressor.get_file_size_gb(vid) > threshold:
+                    out = os.path.splitext(vid)[0] + "_compressed.mkv"
+                    if compressor.compress_audio_maintain_video(vid, out): count += 1
+            if count > 0: success = True
 
-                # Logic for Audio
-                elif merge_type == 'a':
-                    for ext in ['.mp3', '.m4a', '.ac3', '.wav']:
-                        if os.path.exists(base + ext):
-                            found_match = base + ext
-                            break
-                    if found_match:
-                        out = base + "_merged.mkv"
-                        if merger.merge_video_audio(vid_path, found_match, out): count += 1
-
-            if count > 0:
-                success = True
-                print(f"\n🎉 Batch processing complete. Merged {count} files.")
-            else:
-                print("⚠️ No matching subtitle/audio files found in this folder.")
-
-        # MODE 2: SINGLE (Manual)
-        elif sub_choice == "2":
-            vid_path = input("Enter Video Path: ").strip('"')
-            type_choice = input("Merge Subtitle (s) or Audio (a)? ").lower()
+        # ---------------------------------------------------------
+        # 14, 15, 16. AUDIO EXTRACTOR
+        # ---------------------------------------------------------
+        # Rips audio from video files. Uses `-vn` flag to drop video packets.
+        elif choice in ["14", "15", "16"]:
+            extractor = AudioExtractor()
+            fmt = input("Output format (mp3/wav/original): ").lower()
             
-            if not os.path.exists(vid_path):
-                print("❌ Video file not found.")
-            else:
-                if type_choice == 's':
-                    sub_path = input("Enter Subtitle Path (.srt/.ass): ").strip('"')
-                    if os.path.exists(sub_path):
-                        out = os.path.splitext(vid_path)[0] + "_subbed.mkv"
-                        if merger.mux_subtitles(vid_path, sub_path, out): success = True
-                    else:
-                        print("❌ Subtitle file not found.")
-
-                elif type_choice == 'a':
-                    aud_path = input("Enter Audio Path: ").strip('"')
-                    if os.path.exists(aud_path):
-                        out = os.path.splitext(vid_path)[0] + "_merged.mkv"
-                        if merger.merge_video_audio(vid_path, aud_path, out): success = True
-                    else:
-                        print("❌ Audio file not found.")
-
-    # --- 5. COMPRESS ---
-    elif choice == "5":
-        folder = input("Enter folder path: ").strip('"')
-        compressor = VideoCompressor()
-        videos = scan_folder(folder, ['.mkv', '.mp4', '.mov'])
-        threshold = 1.5 
-        
-        count = 0
-        for vid in videos:
-            if compressor.get_file_size_gb(vid) > threshold:
-                print(f"📉 Compressing: {os.path.basename(vid)}")
-                out = os.path.splitext(vid)[0] + "_compressed.mkv"
-                compressor.compress_audio_maintain_video(vid, out)
-                count += 1
-        success = True
-
-    # --- 6. SHORTS ---
-    elif choice == "6":
-        path = input("Enter video path: ").strip('"')
-        editor = VideoEditor()
-        out = os.path.splitext(path)[0] + "_shorts.mp4"
-        if editor.convert_to_shorts_style(path, out):
-            print(f"✅ Created: {out}")
-            success = True
-
-    # --- 7. SPLIT ---
-    elif choice == "7":
-        path = input("Enter video path: ").strip('"')
-        sec = int(input("Enter duration per part (seconds): "))
-        editor = VideoEditor()
-        editor.split_by_time(path, sec)
-        success = True
-
-    # --- 8. STITCH ---
-    elif choice == "8":
-        folder = input("Enter folder with videos: ").strip('"')
-        ext = input("Extension (e.g., .mp4): ")
-        files = sorted(glob.glob(os.path.join(folder, f"*{ext}")))
-        if files:
-            out_name = input("Output filename: ")
-            stitcher = VideoStitcher()
-            stitcher.concat_videos(files, os.path.join(folder, out_name))
-            success = True
-
-    # --- 9. WATERMARK ---
-    elif choice == "9":
-        vid = input("Video path: ").strip('"')
-        img = input("Logo path: ").strip('"')
-        pos = input("Position (br, bl, tr, tl, center): ")
-        wm = Watermarker()
-        out = os.path.splitext(vid)[0] + "_branded.mp4"
-        if wm.add_image_watermark(vid, img, out, pos):
-            success = True
-
-    # --- 10. GIF ---
-    elif choice == "10":
-        path = input("Video path: ").strip('"')
-        start = int(input("Start (sec): "))
-        dur = int(input("Duration (sec): "))
-        maker = GifMaker()
-        out = os.path.splitext(path)[0] + ".gif"
-        maker.create_high_quality_gif(path, out, start, dur)
-        success = True
-
-    # --- 11. REMASTER ---
-    elif choice == "11":
-        path = input("Old video path: ").strip('"')
-        remaster = VideoRemaster()
-        out = os.path.splitext(path)[0] + "_remastered.mp4"
-        remaster.enhance_old_footage(path, out)
-        success = True
-    
-# --- 12: DIVIDER ---
-    elif choice == "12":
-        path = input("Enter video path: ").strip('"')
-        
-        # We removed the 'float()' wrapper so it accepts colons perfectly
-        print("Tip: You can use seconds (3600) OR format like HH:MM:SS (01:00:00)")
-        split_time = input("Enter split time: ").strip()
-        
-        divider = VideoDivider()
-        s, p1, p2 = divider.split_at_intermission(path, split_time)
-        
-        if s:
-            print(f"✅ Division Successful!")
-            print(f"   Part 1: {os.path.basename(p1)}")
-            print(f"   Part 2: {os.path.basename(p2)}")
-            success = True
-        else:
-            print("❌ Division failed.")
-
-    # --- 13: EXTRACT AUDIO ---
-    elif choice == "13":
-        path = input("Enter video path: ").strip('"')
-        fmt = input("Output format (mp3/wav/original): ").lower()
-
-        extractor = AudioExtractor()
-        # Captures success status from the extractor
-        success_status, out = extractor.extract_audio(path, fmt)
-        
-        if success_status:
-            print(f"✅ Audio saved to: {out}")
-            success = True
-        else:
-            print("❌ Extraction failed.")
-
-    # --- 14: THEATRICAL REMASTER (AI Restoration) ---
-    elif choice == "14":
-        print("\n" + "="*50)
-        print("      VIDFLOW FEATURE #14: THEATRICAL REMASTER      ")
-        print("="*50)
-        
-        # Prompt for input and clean the path
-        movie_path = input("Enter path to the movie file (1980s-2005): ").strip('"').strip("'")
-        
-        if not os.path.exists(movie_path):
-            print(f"[!] Error: File '{movie_path}' not found. Please check the path.")
-        else:
-            # Initialize the engine from our new service file
-            engine = RemasterService()
-
-            try:
-                # Phase 1: The Sample (The 'Extractor' logic)
-                print("\n[*] Initializing Engine and RTX GPU...")
-                print("[*] Creating a 2-minute theatrical sample for review...")
-                sample_file = engine.generate_sample(movie_path)
+            # Option 14: Standard extraction from a single file
+            if choice == "14":
+                target_path = get_path("Enter Video File path: ")
+                s, o = extractor.extract_audio(target_path, fmt)
+                if s: success = True
                 
-                print(f"\n[DONE] Sample generated at: {sample_file}")
-                print("[?] ACTION REQUIRED: Open the sample and check for:")
-                print("    - Skin textures (no 'plastic' look)")
-                print("    - Color vibrancy")
-                print("    - Cinematic film grain")
+            # Option 15: Mass Harvester. Scans a folder recursively for all videos.
+            elif choice == "15":
+                target_path = get_path("Enter Folder path (Mass Harvest): ")
+                if extractor.extract_folder(target_path, fmt): success = True
+                
+            # Option 16: Targeted. Pulls alternative tracks (like Track 2 / Dubs).
+            elif choice == "16":
+                target_path = get_path("Enter Video File path: ")
+                tid = int(input("Enter Track ID to extract (e.g., 1 for second track): "))
+                s, o = extractor.extract_audio(target_path, fmt, track_id=tid)
+                if s: success = True
 
-                # Phase 2: User Validation
-                sub_choice = input("\nStart full 12-18 hour remaster? (y/n): ").lower()
-
-                if sub_choice == 'y':
-                    print("\n" + "!"*50)
-                    print("FULL REMASTER IN PROGRESS")
-                    print("The system will handle all steps automatically.")
-                    print("Please ensure your RTX GPU is well-ventilated.")
-                    print("!"*50 + "\n")
-                    
-                    final_video = engine.start_full_remaster(movie_path)
-                    print(f"\n[SUCCESS] Restoration Complete!")
-                    print(f"--> Final File: {final_video}")
+        # ---------------------------------------------------------
+        # 17 & 18. AI REMASTER
+        # ---------------------------------------------------------
+        # Enhances legacy/vintage video using advanced filtering and scaling.
+        elif choice == "17":
+            # Option 17: Standard Enhancement (Denoiser/Upscaler)
+            target_path = get_path("Old video path: ")
+            remaster = VideoRemaster()
+            out = os.path.splitext(target_path)[0] + "_remastered.mp4"
+            if remaster.enhance_old_footage(target_path, out): success = True
+            
+        elif choice == "18":
+            # Option 18: GPU-Heavy AI Restoration (Requires Nvidia RTX hardware)
+            movie_path = get_path("Enter path to old movie (1980s-2005): ")
+            if os.path.exists(movie_path):
+                engine = RemasterService()
+                try:
+                    print("\n[*] Creating a 2-minute theatrical sample...")
+                    sample = engine.generate_sample(movie_path)
+                    print(f"[DONE] Check sample at: {sample}")
+                    if input("\nStart full 12-18 hour remaster? (y/n): ").lower() == 'y':
+                        if engine.start_full_remaster(movie_path): success = True
+                except Exception as e:
+                    print(f"\n[CRITICAL ERROR] Failed: {e}")
+        # ---------------------------------------------------------
+        # 20. ARCHIVER
+        # ---------------------------------------------------------
+        elif choice == "20":
+            target_folder = get_path("Enter parent directory to archive: ")
+            
+            if os.path.exists(target_folder):
+                archiver = FolderArchiver()
+                if archiver.batch_zip_folders(target_folder): 
                     success = True
-                else:
-                    print("\n[X] Full process cancelled. Returning to main menu.")
+            else:
+                print(f"❌ Path not found: {target_folder}")
 
-            except Exception as e:
-                print(f"\n[CRITICAL ERROR] The remastering process failed: {e}")
+        else:
+            print("❌ Invalid option.")
+        
 
-    # ✅ FINAL CHECK: This must be at the very end of the main() function
-    if success:
-        print("\n✨ Operation Completed Successfully")
-    else:
-        print("\n⚠️ Operation Finished (Check logs for details)")
+        # --- END OF LOOP CHECK ---
+        # Instead of risking an UnboundLocalError inside the massive if/elif chain,
+        # we check the global success state here and report it back to the user.
+        if success:
+            print("\n✨ Operation Completed Successfully")
+        else:
+            print("\n⚠️ Operation Finished/Failed (Check logs)")
+        
+        input("\nPress Enter to return to menu...")
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        # Failsafe: Handles Ctrl+C cleanly without throwing ugly Python tracebacks
+        print("\n\nForce quitting VidFlow... Goodbye!")
+        sys.exit(0)
 
+# ==============================================================================
+# 🚀 HOW TO RUN THE VIDFLOW ENGINE (EXECUTION EXAMPLES)
+# ==============================================================================
+#
+# 1. SETUP:
+#    Ensure your folder structure matches the import statements at the top.
+#    /VidFlow_Project/
+#      ├── main.py
+#      └── src/
+#           ├── utils/system.py
+#           └── processors/ (division.py, editor.py, watermark.py, etc.)
+#
+# 2. RUN THE ENGINE:
+#    Open your terminal or command prompt inside the VidFlow_Project folder.
+#    Run: `python main.py`
+#
+# 3. WORKFLOW EXAMPLES:
+#    - Example A (Mass Audio Ripping): 
+#      Press '15' -> Drag a folder of downloaded music videos -> Type 'mp3'.
+#      VidFlow will rip high-quality audio files from every video in that folder.
+#    
+#    - Example B (Watermarking a Library):
+#      Press '11' -> Drag a folder of .mp4s -> Drag your logo.png -> Type 'br'.
+#      VidFlow will burn your logo into the bottom right of every video.
+#
+# ==============================================================================
 
 """
 -----------------------------------------------------------------------
-                           CODE EXPLANATION
+                           FEATURES EXPLANATION (18 MODULES)
 -----------------------------------------------------------------------
 
-1.  Architecture (Modular Design):
-    -   This `main.py` acts as the Orchestrator. It does not contain the 
-        heavy video processing logic itself. 
-    -   Instead, it imports specialized classes (e.g., `VideoEditor`, 
-        `TrackProcessor`, `RemasterService`) from the `src.processors` package. 
-        This adheres to the "Separation of Concerns" principle, making the 
-        project highly maintainable, readable, and easy to expand.
+FORMATS & TRACKS
+1.  Format Converter: Changes video containers (e.g., MKV to MP4) without 
+    losing quality. Automatically detects if you input a single file or a folder.
+2.  Track Cleaner (Audio): Scans a video for all audio languages/dubs. Lets 
+    you enter the IDs of the ones you want to keep and purges the rest to save space.
+3.  Track Cleaner (Subtitles): Scans a video for subtitle tracks. Purges 
+    unwanted languages while keeping your selected IDs perfectly synced.
 
-2.  Dependency Check (`SystemUtils`):
-    -   Before showing the menu, the script runs `check_ffmpeg_availability()`.
-    -   This ensures the core engine (FFmpeg) is installed and accessible 
-        on the host machine, preventing critical crashes later in the execution.
+MERGE & STITCH
+4.  Stream Merger (Audio): Takes a silent/separate video file and an audio 
+    file (WAV/MP3) and muxes them together in perfect timeline sync.
+5.  Stream Merger (Subtitles): Softcodes an external .srt or .ass subtitle 
+    file into a video container so it can be toggled on/off in media players.
+6.  Video Stitcher: Uses the 'concat demuxer' to take multiple video parts 
+    (Part 1, Part 2) and instantly join them into one continuous movie.
 
-3.  Hybrid Processing (Batch & Single):
-    -   The engine features smart path detection utilizing the `scan_folder` helper.
-    -   Many modules (Conversion, Track Cleaning, Merging, Extraction) automatically 
-        detect whether the user provided a single file or an entire directory.
-    -   If a folder is provided, the script recursively finds all compatible media 
-        files and processes entire seasons or playlists simultaneously.
+EDIT & DIVIDE
+7.  Divider (Intermission): Slices a massive movie perfectly in half (or at 
+    any specific timestamp) without re-encoding, creating two playable files.
+8.  Divider (Chunks): Automatically slices a long video into perfectly even 
+    chunks (e.g., 30-second segments) for WhatsApp status or social media.
+9.  Editor (Specific Segments): Surgically extracts a specific highlight 
+    or scene from a movie without losing original 4K/HDR quality.
+10. Editor (9:16 Shorts): Transforms standard widescreen movies into vertical 
+    TikTok/Reels format by applying a professional blurred-background overlay.
 
-4.  Input Handling & Dispatch (14 Modules):
-    -   The script uses a clear CLI (Command Line Interface) menu.
-    -   It captures user input (`choice`) and uses an `if-elif` routing structure 
-        to direct the request to 1 of 14 distinct specialized processors.
-    -   Example: If the user selects '14', the `RemasterService` class is 
-        instantiated to handle the AI restoration logic.
+BRANDING & EXPORT
+11. Watermarker: Burns a custom PNG logo into the video frames. Includes 
+    smart positioning (br, tl, center) and can batch-process entire folders.
+12. GIF Maker: Converts video segments into loopable GIFs using a dual-pass 
+    palette generation system to ensure cinematic, high-quality colors.
+13. Compressor: Scans a folder for videos over a specific size (e.g., 1.5GB) 
+    and intelligently compresses their audio tracks to reduce server footprint.
 
-5.  State Management & Safety (`success` Flag):
-    -   To ensure program stability, a `success` variable is initialized to `False` 
-        at the very start of the `main()` function. 
-    -   While each of the 14 functions contains its own specific error handling 
-        (e.g., catching invalid timestamps, broken codecs, or bad inputs), they all 
-        report back to this global flag.
-    -   If an operation succeeds, it explicitly updates `success = True`. This 
-        guarantees that the final completion check at the end of the script will 
-        never throw an `UnboundLocalError`.
+EXTRACTION (THE HARVESTER)
+14. Extractor (Single): Rips the audio from a video file to MP3, WAV, or 
+    copies the original lossless stream instantly.
+15. Extractor (Mass Harvester): Scans a massive folder recursively and rips 
+    the audio from every single video it finds. Perfect for music libraries.
+16. Extractor (Targeted): Allows you to extract specific embedded tracks 
+    (like Track 2 for Telugu or Track 3 for Hindi) directly to an audio file.
+
+AI RESTORATION
+17. Remaster (Standard): Enhances older footage by reducing noise and upscaling.
+18. Remaster (Theatrical AI): Uses deep-learning (requires RTX GPU) to restore 
+    1980s-2005 footage. Includes a 2-minute "Sample Check" before committing 
+    to a 12-hour full-movie restoration.
 
 -----------------------------------------------------------------------
 """
