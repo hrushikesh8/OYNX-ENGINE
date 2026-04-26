@@ -72,6 +72,7 @@ class TrackProcessor:
             command.extend([
                 '-c', 'copy',                  # No re-encoding (Fast)
                 '-ignore_unknown',             # Safety net against broken "codec: none" streams!
+                '-avoid_negative_ts', 'make_zero', # 🚀 SEAMLESS SERVER UPGRADE: Prevents timeline drift
                 '-y', out_path
             ])
             
@@ -130,3 +131,38 @@ if __name__ == "__main__":
 #
 # (This looks at every video in the folder and removes all subtitles EXCEPT Track 0)
 # ==========================================
+
+# ==============================================================================
+# 🎬 FEATURE: THE MULTI-STREAM TRACK CLEANER (TrackProcessor)
+# ==============================================================================
+#
+# 📝 WHAT IS THIS FILE?
+#    This file is called 'tracks.py', and it acts as a "Surgical Tool" for your 
+#    video files. Its job is to identify all the different audio and subtitle 
+#    tracks inside a container, and let you strip away the ones you don't need. 
+#    It’s essential for cleaning up bloated movie files that have 20 different 
+#    languages, allowing you to keep only the ones you actually want on your server.
+#
+# 📘 TECHNICAL DOCUMENTATION & FEATURE OVERVIEW
+# ------------------------------------------------------------------------------
+#
+# 1. FUNCTIONALITY:
+#    The Track Processor uses 'ffprobe' to scan the internal metadata. It uses 
+#    Negative Mapping ('-map -0:a') to deselect all tracks before surgically 
+#    adding back only the user-approved IDs. It supports 'Batch Processing,' 
+#    meaning it can clean an entire folder of movies automatically in one go.
+#
+# 2. KEY FEATURES:
+#    - Stream Copying (-c copy): Ensures 100% original quality is maintained 
+#      with zero re-encoding time.
+#    - Recursive Batching: Automatically finds all videos in sub-folders.
+#    - Timeline Synchronization: Includes '-avoid_negative_ts' to ensure the 
+#      cleaned files don't suffer from audio sync issues.
+#
+# 3. APPLICATIONS:
+#    - Server Optimization: Removing 'dead weight' audio tracks to save GBs 
+#      of storage across a massive movie library.
+#    - Language Localization: Creating clean versions of films with only 
+#      native language audio and subtitles.
+#
+# ==============================================================================
