@@ -175,4 +175,4 @@ class FormatMapper:
 #    Example: python src/processors/formats.py "Holiday_Video.avi" "mp4"
 #    Output:  A perfectly compatible MP4 version of your original video.
 #
-# ==============================================================================
+# ==============================================================================#

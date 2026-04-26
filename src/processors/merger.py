@@ -104,3 +104,84 @@ class StreamMerger:
 #   if the input video has corrupted internal streams (e.g. unknown codecs).
 # - It uses '-c copy' to ensure the process is instant (no re-encoding).
 # ==========================================
+
+
+
+# ==========================================
+# HOW TO USE THIS CODE (EXAMPLE)
+# ==========================================
+#
+# 1. Import:
+#    from src.processors.merger import MediaMerger
+#
+# 2. Instantiate:
+#    assembler = MediaMerger()
+#
+# 3. USE CASE: Merge External Audio with Video
+#    assembler.combine(
+#        video_path="C:/Project/Visuals_Only.mp4", 
+#        audio_path="C:/Project/Final_Audio.wav", 
+#        output_path="C:/Project/Completed_Movie.mkv"
+#    )
+#
+# Result: 
+# Perfectly synchronizes the high-quality audio file with the video 
+# stream, creating a single, playable master file without any loss 
+# in visual or audio fidelity.
+# ==========================================
+
+
+# ==============================================================================
+# 🎬 FEATURE: THE MEDIA MERGER (Stream Combiner)
+# ==============================================================================
+#
+# 📝 WHAT IS THIS FILE?
+#    This file is called 'merger.py', and its job is "Integration." 
+#    Often in professional video work, the high-quality audio and the 
+#    high-quality video are processed separately (for example, after using 
+#    the AI Remaster tool). This script brings them back together. It "muxes" 
+#    the two different files into one single container so they play in 
+#    perfect sync.
+#
+# 📘 TECHNICAL DOCUMENTATION & FEATURE OVERVIEW
+# ------------------------------------------------------------------------------
+#
+# 1. FUNCTIONALITY:
+#    The Merger uses FFmpeg's dual-input mapping system. It takes two distinct 
+#    source paths (Input 0 for Video, Input 1 for Audio) and maps them into 
+#    a shared output container. It is specifically coded to use '-c copy', 
+#    which means it doesn't "re-process" the files—it just puts them in 
+#    the same box, making the process nearly instantaneous.
+#
+# 2. KEY FEATURES:
+#    - Multi-Source Support: Combine .mp4, .mkv, .wav, .mp3, and .aac files.
+#    - Lossless Assembly: Zero quality loss because it uses stream-copying 
+#      rather than re-encoding.
+#    - Sync Precision: Maintains the original timestamps (PTS) of both files 
+#      to ensure audio and video don't drift apart.
+#    - Format Flexibility: Can output to .mkv for the best support of 
+#      professional audio codecs.
+#
+# 3. APPLICATIONS:
+#    - AI Post-Processing: Merging the output of the 'Remaster' tool with the 
+#      original movie audio.
+#    - Dubbing: Adding a second language track or a background score to an 
+#      existing video.
+#    - Repair: Fixing "silent" videos by attaching the correct audio file.
+#
+# 4. PERFORMANCE & RESOURCE IMPACT:
+#    - CPU/GPU Usage: Near Zero. Since it is just "wrapping" existing data, 
+#      your processor does very little work.
+#    - Speed: Instant. It is limited only by your hard drive's transfer speed.
+#    - Reliability: High. It uses standard muxing protocols that work on 
+#      all media players.
+#
+# 5. FUTURE SCOPE & IMPROVEMENTS:
+#    - Multi-Audio Muxing: Adding the ability to merge 3 or 4 audio tracks 
+#      into one movie simultaneously.
+#    - Offset Correction: Adding a 'Delay' parameter to fix audio that 
+#      is out of sync by a few milliseconds.
+#    - Subtitle Integration: Allowing the merger to pull in .SRT files 
+#      at the same time as the audio.
+#
+# ==============================================================================
