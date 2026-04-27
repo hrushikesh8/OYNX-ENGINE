@@ -16,6 +16,8 @@ from src.processors.remaster import VideoRemaster
 from src.processors.extractor import AudioExtractor
 from src.processors.archiver import FolderArchiver
 from src.processors.remaster_service import RemasterService
+from src.processors.unarchiver import EnterpriseUnarchiver
+
 
 # ==============================================================================
 # LIBRARY & ARCHITECTURE EXPLANATION
