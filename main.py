@@ -353,6 +353,15 @@ def main():
                     success = True
             else:
                 print(f"❌ Path not found: {target_folder}")
+        # ---------------------------------------------------------
+        # 21. UN-ARCHIVER (7-ZIP ENGINE)
+        # ---------------------------------------------------------
+        elif choice == "21":
+            target_zip = get_path("Enter the path to the .zip file: ")
+            
+            unarchiver = EnterpriseUnarchiver()
+            if unarchiver.extract_archive(target_zip):
+                success = True
 
         else:
             print("❌ Invalid option.")
