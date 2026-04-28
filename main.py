@@ -84,10 +84,11 @@ def main():
         print(" 18.  Remaster: Standard Enhancement")
         print(" 19.  Remaster: Theatrical AI Restoration (RTX)")
         print(" 20.  Archiver: Project Packaging & Cleanup") # 🚀 NEW
+        print(" 21.  Unarchiver: Project Unpackaging") # 🚀 NEW
         print("  0.  Exit VidFlow")
         print("="*55)
 
-        choice = input("Select an Engine (0-20): ").strip()
+        choice = input("Select an Engine (0-21): ").strip()
         
         if choice == '0':
             print("\nShutting down VidFlow... Get some rest!")
