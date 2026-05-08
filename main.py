@@ -17,6 +17,8 @@ from src.processors.extractor import AudioExtractor
 from src.processors.archiver import FolderArchiver
 from src.processors.remaster_service import RemasterService
 from src.processors.unarchiver import EnterpriseUnarchiver
+# Import the standalone Seamless Suture module (Feature 22)
+import seamless_suture
 
 
 # ==============================================================================
@@ -85,6 +87,8 @@ def main():
         print(" 19.  Remaster: Theatrical AI Restoration (RTX)")
         print(" 20.  Archiver: Project Packaging & Cleanup") # 🚀 NEW
         print(" 21.  Unarchiver: Project Unpackaging") # 🚀 NEW
+        # Feature 22: Native Stream Concat for Split Movies
+        print("22. Seamless Suture (Merge Split MKV/MP4 parts instantly)")
         print("  0.  Exit VidFlow")
         print("="*55)
 
@@ -157,25 +161,28 @@ def main():
                     print("❌ No tracks found.")
 
         # ---------------------------------------------------------
-        # 4 & 5. STREAM MERGER
+        # 4 & 5. STREAM MERGER (BATCH AUTOMATION)
         # ---------------------------------------------------------
-        # Muxes external Audio or Subtitle files into a Video container.
-        # This operates losslessly (no re-encoding) to instantly sync streams.
+        # Scans a folder to automatically pair and mux Audio or Subtitle files 
+        # into Video containers losslessly (no re-encoding).
         elif choice in ["4", "5"]:
-            vid_path = get_path("Enter Video path: ")
             merger = StreamMerger()
             
-            # Option 4: Audio Merging
+            # Option 4: Batch Audio Merging
             if choice == "4":
-                aud_path = get_path("Enter Audio path (.wav, .mp3): ")
-                out = os.path.splitext(vid_path)[0] + "_merged.mkv"
-                if merger.merge_video_audio(vid_path, aud_path, out): success = True
+                print("\n--- BATCH AUDIO MERGER ---")
+                print("Name your video and audio files exactly the same (e.g., Ep1.mkv and Ep1.mka)")
+                target_folder = get_path("Enter folder path: ")
+                if merger.batch_process_folder(target_folder, mode='audio'): 
+                    success = True
             
-            # Option 5: Subtitle Embedding (Softcoding)
+            # Option 5: Batch Subtitle Embedding
             else:
-                sub_path = get_path("Enter Subtitle path (.srt, .ass): ")
-                out = os.path.splitext(vid_path)[0] + "_subbed.mkv"
-                if merger.mux_subtitles(vid_path, sub_path, out): success = True
+                print("\n--- BATCH SUBTITLE EMBEDDER ---")
+                print("Name your video and subtitle files exactly the same (e.g., Movie.mp4 and Movie.srt)")
+                target_folder = get_path("Enter folder path: ")
+                if merger.batch_process_folder(target_folder, mode='subtitle'): 
+                    success = True
 
         # ---------------------------------------------------------
         # 6. VIDEO STITCHER
@@ -363,7 +370,30 @@ def main():
             unarchiver = EnterpriseUnarchiver()
             if unarchiver.extract_archive(target_zip):
                 success = True
+        # Inside your Menu UI / Terminal Interface:
+        elif choice == "22":
+            print("\n" + "="*50)
+            print("      INITIATING FEATURE 22: SEAMLESS SUTURE")
+            print("="*50)
+            print("This tool will automatically find the exact visual overlap")
+            print("between split movie parts and merge them natively with zero")
+            print("quality loss or timeline freezing.")
+            print("-" * 50)
+    
+            # 1. Gather the target directory from the user
+            target_folder = input("Enter the Folder Path containing the split parts:\n> ").strip().replace('"', '')
+    
+            # 2. Execute the independent module
+            # We wrap it in a basic try/except just in case the user provides a completely broken path
+            try:
+                print("\nHanding over to Seamless Suture Engine...")
+                seamless_suture.run_suture_workflow(target_folder)
+            except Exception as e:
+                print(f"\n[CRITICAL ERROR] The Seamless Suture module failed: {e}")
+        
+            print("\nReturning to VidFlow Main Menu...")
 
+# ... (the rest of your loop) ...
         else:
             print("❌ Invalid option.")
         
