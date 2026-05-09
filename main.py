@@ -18,7 +18,10 @@ from src.processors.archiver import FolderArchiver
 from src.processors.remaster_service import RemasterService
 from src.processors.unarchiver import EnterpriseUnarchiver
 # Import the standalone Seamless Suture module (Feature 22)
-import seamless_suture
+# Import Feature 22 & 23 from the correct folder path
+from src.processors import seamless_suture
+from src.processors import scene_sniper
+
 
 
 # ==============================================================================
@@ -68,27 +71,30 @@ def main():
         print("  4.  Stream Merger: Audio + Video Sync")
         print("  5.  Stream Merger: Mux/Embed Subtitles")
         print("  6.  Video Stitcher: Concat Parts Seamlessly")
+        print("  7. Seamless Suture (Merge Split MKV/MP4 parts instantly)")
         print(" --- EDIT & DIVIDE ---")
-        print("  7.  Divider: Theatrical Intermission (2-Parts)")
-        print("  8.  Divider: Chunk for WhatsApp/Reels (30s)")
-        print("  9.  Editor: Split by Specific Time Segments")
-        print(" 10.  Editor: Convert to 9:16 Shorts (Blur BG)")
+        print("  8.  Divider: Theatrical Intermission (2-Parts)")
+        print("  9.  Divider: Chunk for WhatsApp/Reels (30s)")
+        print("  10.  Editor: Split by Specific Time Segments")
+        print("  11.  Editor: Convert to 9:16 Shorts (Blur BG)")
+        print("  12.  Scene Sniper (Fast-Extract Specific Clip/Song)")
         print(" --- BRANDING & EXPORT ---")
-        print(" 11.  Watermarker: Burn Logo (With Position/Batch)")
-        print(" 12.  Watermarker: Remove Logo (In-painting/Delogo)") # 🚀 NEW
-        print(" 13.  GIF Maker: High-Quality Palette Engine")
-        print(" 14.  Compressor: Smart Size Reduction")
+        print("  13.  Watermarker: Burn Logo (With Position/Batch)")
+        print("  14.  Watermarker: Remove Logo (In-painting/Delogo)") # 🚀 NEW
+        print("  15.  GIF Maker: High-Quality Palette Engine")
+        print("  16.  Compressor: Smart Size Reduction")
         print(" --- EXTRACTION (HARVESTER) ---")
-        print(" 15.  Extractor: Single Audio Rip")
-        print(" 16.  Extractor: Mass Harvester (Folder Batch Rip)")
-        print(" 17.  Extractor: Target Specific Track ID")
+        print("  17.  Extractor: Single Audio Rip")
+        print("  18.  Extractor: Mass Harvester (Folder Batch Rip)")
+        print("  19.  Extractor: Target Specific Track ID")
         print(" --- AI RESTORATION & ARCHIVAL ---")
-        print(" 18.  Remaster: Standard Enhancement")
-        print(" 19.  Remaster: Theatrical AI Restoration (RTX)")
-        print(" 20.  Archiver: Project Packaging & Cleanup") # 🚀 NEW
-        print(" 21.  Unarchiver: Project Unpackaging") # 🚀 NEW
-        # Feature 22: Native Stream Concat for Split Movies
-        print("22. Seamless Suture (Merge Split MKV/MP4 parts instantly)")
+        print("  20.  Remaster: Standard Enhancement")
+        print("  21.  Remaster: Theatrical AI Restoration (RTX)")
+        print("  22.  Archiver: Project Packaging & Cleanup") # 🚀 NEW
+        print("  23.  Unarchiver: Project Unpackaging") # 🚀 NEW
+        # Feature 24: Native Stream Concat for Split Movies
+        # Brand new Feature 25 added here!
+        
         print("  0.  Exit VidFlow")
         print("="*55)
 
@@ -200,10 +206,37 @@ def main():
                 if stitcher.concat_videos(files, os.path.join(folder, out_name)): success = True
 
         # ---------------------------------------------------------
-        # 7 & 8 & 9. DIVIDER & EDITOR SPLITTING
+        # 7. SEAMLESS SUTURE (NATIVE SPLIT MERGER)
+        # ---------------------------------------------------------
+        # Automatically finds the exact visual overlap between split movie parts.
+        # Merges them natively using Stream Copy with zero quality loss or timeline freezing.
+        elif choice == "7":
+            print("\n" + "="*50)
+            print("      INITIATING FEATURE 7: SEAMLESS SUTURE")
+            print("="*50)
+            print("This tool will automatically find the exact visual overlap")
+            print("between split movie parts and merge them natively with zero")
+            print("quality loss or timeline freezing.")
+            print("-" * 50)
+    
+            # 1. Gather the target directory from the user
+            target_folder = input("Enter the Folder Path containing the split parts:\n> ").strip().replace('"', '')
+    
+            # 2. Execute the independent module
+            # We wrap it in a basic try/except just in case the user provides a completely broken path
+            try:
+                print("\nHanding over to Seamless Suture Engine...")
+                seamless_suture.run_suture_workflow(target_folder)
+            except Exception as e:
+                print(f"\n[CRITICAL ERROR] The Seamless Suture module failed: {e}")
+        
+            print("\nReturning to VidFlow Main Menu...")
+
+        # ---------------------------------------------------------
+        # 8 & 9 & 10. DIVIDER & EDITOR SPLITTING
         # ---------------------------------------------------------
         # Handles all operations related to cutting a video.
-        elif choice in ["7", "8", "9"]:
+        elif choice in ["8", "9", "10"]:
             target_path = get_path()
             
             # Option 7: Intermission (Cut exactly at a specified timestamp)
@@ -226,22 +259,50 @@ def main():
                 if editor.split_by_time(target_path, sec): success = True
 
         # ---------------------------------------------------------
-        # 10. EDITOR: SHORTS
+        # 11. EDITOR: SHORTS
         # ---------------------------------------------------------
         # Converts standard 16:9 widescreen video into 9:16 vertical video.
         # Applies a professional gaussian blur to the background automatically.
-        elif choice == "10":
+        elif choice == "11":
             target_path = get_path()
             editor = VideoEditor()
             out = os.path.splitext(target_path)[0] + "_shorts.mp4"
             if editor.convert_to_shorts_style(target_path, out): success = True
 
         # ---------------------------------------------------------
-        # 11. WATERMARK (SMART SINGLE/BATCH)
+        # 12. SCENE SNIPER (FAST-EXTRACT SPECIFIC CLIP)
+        # ---------------------------------------------------------
+        # Instantly rips a specific scene or song based on precise timestamps.
+        # Uses native Stream Copy (-c copy) to slice the video with ZERO re-encoding or quality loss.
+
+        elif choice == "12":
+            print("\n" + "="*50)
+            print("      INITIATING FEATURE 23: SCENE SNIPER")
+            print("="*50)
+            print("This tool extracts a specific scene or song natively.")
+            print("It uses Stream Copy (-c copy) to slice the video instantly")
+            print("with ZERO quality loss and ZERO re-encoding.")
+            print("-" * 50)
+    
+            # 1. Ask the user for the specific movie file (NOT a folder)
+            target_file = input("Enter the specific Movie File Path:\n> ").strip().replace('"', '')
+    
+            # 2. Execute the independent Sniper module safely
+            try:
+        # We pass control to scene_sniper.py, which handles the timestamps and cutting
+                scene_sniper.run_sniper_workflow(target_file)
+            except Exception as e:
+            # If the file is corrupted or FFmpeg crashes, VidFlow stays alive
+                print(f"\n[CRITICAL ERROR] The Scene Sniper module failed: {e}")
+        
+            print("\nReturning to VidFlow Main Menu...")
+
+        # ---------------------------------------------------------
+        # 13. WATERMARK (SMART SINGLE/BATCH)
         # ---------------------------------------------------------
         # Overlays a PNG logo onto the video frames (requires re-encoding).
         # We upgraded this with Smart Folder Detection to brand massive batches.
-        elif choice == "11":
+        elif choice == "13":
             target_path = get_path("Enter Video OR Folder path: ")
             img = get_path("Enter Logo path (.png): ")
             pos = input("Position (br, bl, tr, tl, center) [Default: br]: ") or "br"
@@ -259,12 +320,13 @@ def main():
                 out = os.path.splitext(target_path)[0] + "_branded.mp4"
                 if wm.add_image_watermark(target_path, img, out, pos): success = True
 
+        
         # ---------------------------------------------------------
-        # 12. GIF MAKER
+        # 15. GIF MAKER
         # ---------------------------------------------------------
         # Generates loopable animations using a two-pass palette algorithm.
         # Presets allow the user to balance generation speed vs visual quality.
-        elif choice == "12":
+        elif choice == "15":
             target_path = get_path()
             start = input("Start time (e.g., 00:00:10): ")
             dur = input("Duration in sec: ")
@@ -274,11 +336,11 @@ def main():
             if maker.create_gif(target_path, out, start, dur, preset=preset): success = True
 
         # ---------------------------------------------------------
-        # 13. COMPRESSOR
+        # 16. COMPRESSOR
         # ---------------------------------------------------------
         # Intelligently scans a directory for massive files (default > 1.5GB) 
         # and recompresses their audio tracks to save space without ruining video quality.
-        elif choice == "13":
+        elif choice == "16":
             folder = get_path("Enter folder path to scan for compression: ")
             compressor = VideoCompressor()
             videos = scan_folder(folder, ['.mkv', '.mp4', '.mov'])
@@ -292,26 +354,26 @@ def main():
             if count > 0: success = True
 
         # ---------------------------------------------------------
-        # 14, 15, 16. AUDIO EXTRACTOR
+        # 17, 18, 19. AUDIO EXTRACTOR
         # ---------------------------------------------------------
         # Rips audio from video files. Uses `-vn` flag to drop video packets.
-        elif choice in ["14", "15", "16"]:
+        elif choice in ["17", "18", "19"]:
             extractor = AudioExtractor()
             fmt = input("Output format (mp3/wav/original): ").lower()
             
             # Option 14: Standard extraction from a single file
-            if choice == "14":
+            if choice == "17":
                 target_path = get_path("Enter Video File path: ")
                 s, o = extractor.extract_audio(target_path, fmt)
                 if s: success = True
                 
             # Option 15: Mass Harvester. Scans a folder recursively for all videos.
-            elif choice == "15":
+            elif choice == "18":
                 target_path = get_path("Enter Folder path (Mass Harvest): ")
                 if extractor.extract_folder(target_path, fmt): success = True
                 
             # Option 16: Targeted. Pulls alternative tracks (like Track 2 / Dubs).
-            elif choice == "16":
+            elif choice == "19":
                 target_path = get_path("Enter Video File path: ")
                 tid = int(input("Enter Track ID to extract (e.g., 1 for second track): "))
                 s, o = extractor.extract_audio(target_path, fmt, track_id=tid)
@@ -321,14 +383,14 @@ def main():
         # 17 & 18. AI REMASTER
         # ---------------------------------------------------------
         # Enhances legacy/vintage video using advanced filtering and scaling.
-        elif choice == "17":
+        elif choice == "20":
             # Option 17: Standard Enhancement (Denoiser/Upscaler)
             target_path = get_path("Old video path: ")
             remaster = VideoRemaster()
             out = os.path.splitext(target_path)[0] + "_remastered.mp4"
             if remaster.enhance_old_footage(target_path, out): success = True
             
-        elif choice == "18":
+        elif choice == "21":
             # Option 18: GPU-Heavy AI Restoration (Requires Nvidia RTX hardware)
             movie_path = get_path("Enter path to old movie (1980s-2005): ")
             if os.path.exists(movie_path):
@@ -344,7 +406,7 @@ def main():
         # ---------------------------------------------------------
         # 20. ARCHIVER
         # ---------------------------------------------------------
-        elif choice == "20":
+        elif choice == "22":
             target_folder = get_path("Enter parent directory to archive: ")
             
             if os.path.exists(target_folder):
@@ -364,34 +426,22 @@ def main():
         # ---------------------------------------------------------
         # 21. UN-ARCHIVER (7-ZIP ENGINE)
         # ---------------------------------------------------------
-        elif choice == "21":
+        elif choice == "23":
             target_zip = get_path("Enter the path to the .zip file: ")
             
             unarchiver = EnterpriseUnarchiver()
             if unarchiver.extract_archive(target_zip):
                 success = True
-        # Inside your Menu UI / Terminal Interface:
-        elif choice == "22":
-            print("\n" + "="*50)
-            print("      INITIATING FEATURE 22: SEAMLESS SUTURE")
-            print("="*50)
-            print("This tool will automatically find the exact visual overlap")
-            print("between split movie parts and merge them natively with zero")
-            print("quality loss or timeline freezing.")
-            print("-" * 50)
-    
-            # 1. Gather the target directory from the user
-            target_folder = input("Enter the Folder Path containing the split parts:\n> ").strip().replace('"', '')
-    
-            # 2. Execute the independent module
-            # We wrap it in a basic try/except just in case the user provides a completely broken path
-            try:
-                print("\nHanding over to Seamless Suture Engine...")
-                seamless_suture.run_suture_workflow(target_folder)
-            except Exception as e:
-                print(f"\n[CRITICAL ERROR] The Seamless Suture module failed: {e}")
         
-            print("\nReturning to VidFlow Main Menu...")
+        
+        # ==========================================
+        # FEATURE EXECUTION ROUTING
+        # ==========================================
+
+        # ... (your previous if/elif blocks) ...
+
+        
+# ... (the rest of your script) ...
 
 # ... (the rest of your loop) ...
         else:

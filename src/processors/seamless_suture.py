@@ -78,34 +78,55 @@ def execute_final_merge(part1, part2, match_frame, target_folder):
         print(f"\n[ERROR] FFmpeg failed during processing: {e}")
 
 def run_suture_workflow(folder_path):
-    """The entry point for VidFlow main application."""
+    """The entry point for VidFlow main application with Batch Processing."""
     if not os.path.isdir(folder_path):
         print("Invalid directory.")
         return
 
-    # Grabs both MKV and MP4 files, ignores random files like .srt or .txt
+    # Grabs both MKV and MP4 files, ignores random files
     files = [os.path.join(folder_path, f) for f in os.listdir(folder_path) 
              if f.lower().endswith(('.mkv', '.mp4'))]
+    
+    # Sort alphabetically so Part 1 and Part 2 are always paired next to each other
     files.sort()
 
     if len(files) < 2:
         print("Need at least two video files (.mkv or .mp4) in the folder to merge.")
         return
 
-    p1, p2 = files[0], files[1]
-    
-    # Quick safety check to prevent MKV + MP4 crashes
-    if os.path.splitext(p1)[1].lower() != os.path.splitext(p2)[1].lower():
-        print("[ERROR] File extensions do not match. Both parts must be MKV or both must be MP4.")
-        return
+    total_pairs = len(files) // 2
+    print(f"\n[Batch Mode] Found {len(files)} files. Queuing {total_pairs} movies for suture...")
 
-    match_idx = find_merge_indices(p1, p2, overlap_duration=60)
+    # Loop through the list in steps of 2 (0, 2, 4, 6...)
+    for i in range(0, len(files) - 1, 2):
+        p1 = files[i]
+        p2 = files[i+1]
+        
+        movie_number = (i // 2) + 1
+        print("\n" + "="*50)
+        print(f"Processing Movie {movie_number} of {total_pairs}:")
+        print(f"Part 1: {os.path.basename(p1)}")
+        print(f"Part 2: {os.path.basename(p2)}")
+        print("-" * 50)
+        
+        # Safety check: ensure both parts share the same extension
+        ext1 = os.path.splitext(p1)[1].lower()
+        ext2 = os.path.splitext(p2)[1].lower()
+        
+        if ext1 != ext2:
+            print(f"[ERROR] Format mismatch ({ext1} vs {ext2}). Skipping this pair...")
+            continue
 
-    if match_idx != -1:
-        execute_final_merge(p1, p2, match_idx, folder_path)
-    else:
-        print("[ERROR] Could not find overlapping frames.")
+        match_idx = find_merge_indices(p1, p2, overlap_duration=60)
 
+        if match_idx != -1:
+            execute_final_merge(p1, p2, match_idx, folder_path)
+        else:
+            print("[ERROR] Could not find overlapping frames. Skipping this pair...")
+            
+    print("\n" + "="*50)
+    print("Batch Seamless Suture Complete!")
+    print("="*50)
 if __name__ == "__main__":
     # Allows you to still test it independently
     test_folder = input("Enter Folder Path: ").strip().replace('"', '')
