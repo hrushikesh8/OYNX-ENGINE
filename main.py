@@ -21,6 +21,7 @@ from src.processors.unarchiver import EnterpriseUnarchiver
 # Import Feature 22 & 23 from the correct folder path
 from src.processors import seamless_suture
 from src.processors import scene_sniper
+from src.processors import watermark_remover
 
 
 
@@ -319,6 +320,25 @@ def main():
                 # Brand a single file
                 out = os.path.splitext(target_path)[0] + "_branded.mp4"
                 if wm.add_image_watermark(target_path, img, out, pos): success = True
+
+        # ---------------------------------------------------------
+        # 14. WATERMARK REMOVER (IN-PAINTING/DELOGO)
+        # ---------------------------------------------------------
+        # Uses OpenCV for visual bounding-box selection, then applies FFmpeg's
+        # delogo filter to spatially interpolate and remove the logo.
+        elif choice == "14":
+            print("\n" + "="*50)
+            print("      INITIATING FEATURE 14: WATERMARK REMOVER")
+            print("="*50)
+            
+            target_file = input("Enter the specific Movie File Path:\n> ").strip().replace('"', '')
+            
+            try:
+                watermark_remover.run_delogo_workflow(target_file)
+            except Exception as e:
+                print(f"\n[CRITICAL ERROR] The Delogo module failed: {e}")
+                
+            print("\nReturning to VidFlow Main Menu...")
 
         
         # ---------------------------------------------------------
