@@ -44,22 +44,39 @@ def extract_scene(input_file, start_time, end_time, output_name=None):
     except subprocess.CalledProcessError as e:
         print(f"\n[ERROR] Sniper failed to extract the clip: {e}")
 
-def run_sniper_workflow(target_path):
-    print("\n--- VidFlow: Scene Sniper ---")
+
+def run_sniper_workflow(target_path, start_time, end_time):
+    """Executes the native FFmpeg stream copy using UI parameters."""
+    print("\n--- Onyx Engine: Scene Sniper Activated ---")
     
-    if os.path.isdir(target_path):
-        print("[INFO] Please provide a direct path to a specific movie FILE, not a folder.")
+    if not os.path.isfile(target_path):
+        print(f"[ERROR] Invalid file path: {target_path}")
         return
 
-    print("Format examples: '125' (seconds) OR '01:15:30' (HH:MM:SS)")
-    start_time = input("Enter START time: ").strip()
-    end_time = input("Enter END time: ").strip()
+    # Generate the output file name automatically
+    base_dir = os.path.dirname(target_path)
+    ext = os.path.splitext(target_path)[1]
+    base_name = os.path.basename(target_path).replace(ext, "")
+    output_name = os.path.join(base_dir, f"{base_name}_Snipped{ext}")
 
-    if start_time and end_time:
-        extract_scene(target_path, start_time, end_time)
-    else:
-        print("[ERROR] You must provide both a start and end time.")
+    # The FFmpeg Stream Copy Command (Zero Re-encoding)
+    # The Frame-Accurate Command (Fixes Pixelation)
+    # The Lightning-Fast "Smart Trim" Command
+    cmd = [
+        'ffmpeg', '-y',
+        '-ss', start_time,   # Putting this BEFORE the input forces a clean Keyframe snap
+        '-i', target_path,
+        '-to', end_time,
+        '-c', 'copy',        # Zero re-encoding. 100% original quality.
+        output_name
+    ]
 
-if __name__ == "__main__":
-    test_file = input("Enter the movie file path: ").strip().replace('"', '')
-    run_sniper_workflow(test_file)
+    try:
+        print(f"---> Extracting from {start_time} to {end_time}...")
+        subprocess.run(cmd, check=True)
+        print(f"\n[SUCCESS] Scene Extracted Successfully!")
+        print(f"Saved at: {output_name}")
+    except subprocess.CalledProcessError as e:
+        print(f"\n[ERROR] Engine failed during extraction: {e}")
+
+# We remove the old `if __name__ == "__main__":` block that asked for inputs

@@ -4,6 +4,9 @@ from pathlib import Path
 import glob
 
 class FormatMapper:
+    """
+    🎬 FEATURE: THE VIDEO FORMAT CONVERTER (Original Logic Intact)
+    """
     # Define codec rules for different containers to ensure compatibility
     FORMAT_RULES = {
         'mkv': ['-map', '0', '-c', 'copy'],  # Lossless, keeps all streams
@@ -21,15 +24,15 @@ class FormatMapper:
         filename = Path(input_path).stem
         output_path = os.path.join(output_folder, f"{filename}.{target_format}")
         
-        # Get flags from our rules, default to simple copy if unknown (The "Catch-All")
+        # Get flags from our rules, default to simple copy if unknown
         cmd_flags = self.FORMAT_RULES.get(target_format, ['-c', 'copy'])
 
-        print(f"   🔄 Converting: {filename} -> .{target_format}")
+        print(f"    🔄 Converting: {filename} -> .{target_format}")
         
         command = ['ffmpeg', '-i', input_path, *cmd_flags, '-ignore_unknown', '-y', output_path]
         
         try:
-            # Run ffmpeg (capture_output=True hides spam)
+            # Run ffmpeg
             subprocess.run(command, check=True, capture_output=True)
             return {"status": "success", "file": filename}
         except subprocess.CalledProcessError as e:
@@ -44,17 +47,14 @@ class FormatMapper:
 
         tasks = []
         
-        # 1. Detect Input Type
         if os.path.isdir(input_path):
             print(f"📂 Scanning folder for videos...")
-            
-            # Expanded list to catch almost ALL video formats
             extensions = (
                 '*.mp4', '*.mkv', '*.avi', '*.mov', '*.flv', '*.wmv', 
                 '*.mpg', '*.mpeg', '*.webm', '*.m4v', '*.ts', '*.vob', '*.3gp'
             )
-            
             for ext in extensions:
+                # YOUR ORIGINAL RECURSIVE LOGIC
                 tasks.extend(glob.glob(os.path.join(input_path, '**', ext), recursive=True))
         
         elif os.path.isfile(input_path):
@@ -75,23 +75,25 @@ class FormatMapper:
         error_count = 0
 
         for file_path in tasks:
-            # Skip if the file is already in the target format (prevent overwriting/loops)
+            # Skip if already in target format
             if file_path.lower().endswith(f".{target_format}"):
-                print(f"   ⏭️  Skipping {os.path.basename(file_path)} (already matches format)")
+                print(f"    ⏭️  Skipping {os.path.basename(file_path)} (already matches format)")
                 continue
 
             result = self.convert_video(file_path, output_folder, target_format)
             
             if result['status'] == 'success':
-                print(f"   ✅ Done: {result['file']}")
+                print(f"    ✅ Done: {result['file']}")
                 success_count += 1
             else:
-                print(f"   ❌ Failed: {result['file']}")
+                print(f"    ❌ Failed: {result['file']}")
                 error_count += 1
 
         print("-" * 40)
         print(f"🎉 Complete. Success: {success_count} | Errors: {error_count}")
+        return success_count, error_count
 
+# --- YOUR ORIGINAL DOCUMENTATION PRESERVED AT BOTTOM ---
 # ==========================================
 # HOW TO USE THIS CODE (DOCUMENTATION)
 # ==========================================
