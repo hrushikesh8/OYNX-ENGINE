@@ -3,9 +3,10 @@ import subprocess
 from pathlib import Path
 
 class RemasterService:
-    def __init__(self, output_base="remastered_outputs"):
+    def __init__(self, output_base="remastered_outputs", ai_engine_path=None):
         self.output_base = Path(output_base)
         self.output_base.mkdir(exist_ok=True)
+        self.ai_engine = ai_engine_path or "realesrgan-ncnn-vulkan.exe"
 
     def _run_cmd(self, cmd):
         """Standard runner for VidFlow sub-processes."""
@@ -50,8 +51,8 @@ class RemasterService:
         """The Core AI Restoration and Encoding Pipeline."""
         temp_upscale = "temp_upscaling_buffer.mp4"
 
-        # 1. SET THE ABSOLUTE PATH TO YOUR EXE
-        ai_engine = r"C:\Users\Hrushikesh Bunni\Downloads\H\PROJECTS\VidFlow\realesrgan-ncnn-vulkan.exe"
+        # Dynamic AI engine executable from settings
+        ai_engine = self.ai_engine
 
         # Step A: AI Upscaling (Utilizing RTX GPU)
         self._run_cmd([

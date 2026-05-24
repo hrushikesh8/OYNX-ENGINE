@@ -13,9 +13,12 @@ class VideoRemaster:
     def __init__(self, bin_folder="bin"):
         """
         Initializes the path to the AI binaries.
-        Default expects 'realesrgan-ncnn-vulkan.exe' in the /bin directory.
+        Can accept the absolute executable path directly, or a folder.
         """
-        self.ai_bin = os.path.join(bin_folder, "realesrgan-ncnn-vulkan.exe")
+        if bin_folder.lower().endswith(".exe"):
+            self.ai_bin = bin_folder
+        else:
+            self.ai_bin = os.path.join(bin_folder, "realesrgan-ncnn-vulkan.exe")
         
     def enhance_old_footage(self, input_path: str, output_path: str, scale: int = 2):
         """

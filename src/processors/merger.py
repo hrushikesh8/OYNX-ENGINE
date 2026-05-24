@@ -9,62 +9,59 @@ class StreamMerger:
         self.audio_exts = ('.mka', '.aac', '.mp3', '.ac3', '.eac3', '.wav', '.m4a')
 
     # ==========================================
-    # 1. SINGLE FILE ENGINES (Your Original Perfect Code)
+    # 1. SINGLE FILE ENGINES
     # ==========================================
     def merge_video_audio(self, video_path: str, audio_path: str, output_path: str):
-        """
-        Combines a video file (visuals) with a separate audio file.
-        Useful when you have downloaded 'Video Only' and 'Audio Only' streams separately.
-        """
-        """Combines a video file (visuals) with a separate audio file."""
+        """Combines visuals with a separate audio file instantly."""
         print(f"   🔗 VidFlow Merger: {os.path.basename(video_path)} + {os.path.basename(audio_path)}")
         
         command = [
-            'ffmpeg',
-            '-i', video_path,   # Input 0: The Video File
-            '-i', audio_path,   # Input 1: The Audio File
-            '-c:v', 'copy',     # Copy video stream directly
-            '-c:a', 'copy',     # Copy audio stream directly
-            '-map', '0:v:0',    # Take the 1st Video stream from Input 0
-            '-map', '1:a:0',    # Take the 1st Audio stream from Input 1
-            '-ignore_unknown',  # Skip corrupt streams
-            '-avoid_negative_ts', 'make_zero', 
-            '-y', output_path
+            'ffmpeg', '-y',
+            '-i', video_path,
+            '-i', audio_path,
+            '-map', '0:v:0',      # Video from Input 0
+            '-map', '1:a:0',      # Audio from Input 1
+            '-c', 'copy',         # Direct stream copy (No re-encoding)
+            '-shortest',          # Stops when the shortest stream ends
+            '-ignore_unknown',
+            output_path
         ]
         
         try:
             subprocess.run(command, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            print(f"   ✅ Success: {os.path.basename(output_path)}")
             return True
         except subprocess.CalledProcessError:
-            print(f"   ❌ Merge Failed for: {os.path.basename(video_path)}")
             return False
 
     def mux_subtitles(self, video_path: str, sub_path: str, output_path: str):
-        """Embeds (Softcodes) a subtitle file into a video container."""
-        print(f"   🔗 Muxing Subs: {os.path.basename(video_path)} + {os.path.basename(sub_path)}")
+        """Embeds a subtitle file into a video container."""
+        print(f"   📝 Muxing Subs: {os.path.basename(video_path)} + {os.path.basename(sub_path)}")
 
         command = [
-            'ffmpeg', '-i', video_path, '-i', sub_path,
-            '-map', '0',   # Take EVERYTHING from Input 0
-            '-map', '1',   # ADD the new subtitle file
-            '-c', 'copy',  # Copy everything
-            '-c:s', 'srt', # Force SRT codec
-            '-ignore_unknown', 
-            '-avoid_negative_ts', 'make_zero', 
-            '-y', output_path
+            'ffmpeg', '-y',
+            '-i', video_path,
+            '-i', sub_path,
+            '-map', '0',          # Take everything from original video
+            '-map', '1',          # Add the subtitle file
+            '-c', 'copy'          # Copy all streams
         ]
+
+        # CRITICAL FIX: MP4 files do not support 'srt' codec. They need 'mov_text'.
+        if output_path.lower().endswith('.mp4'):
+            command.extend(['-c:s', 'mov_text'])
+        else:
+            command.extend(['-c:s', 'srt'])
+
+        command.append(output_path)
         
         try:
             subprocess.run(command, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            print(f"   ✅ Success: {os.path.basename(output_path)}")
             return True
         except subprocess.CalledProcessError:
-            print(f"   ❌ Mux Error for: {os.path.basename(video_path)}")
             return False
 
     # ==========================================
-    # 2. THE NEW BATCH AUTOMATION ENGINE
+    # 2. THE SMART BATCH AUTOMATION ENGINE
     # ==========================================
     def _find_matching_file(self, folder, base_name, valid_extensions):
         """Helper tool to find a matching file regardless of extension."""
@@ -76,44 +73,49 @@ class StreamMerger:
 
     def batch_process_folder(self, target_folder: str, mode: str):
         """
-        Scans a folder and automatically pairs/muxes files.
-        mode can be 'audio' or 'subtitle'
+        Scans a folder and automatically pairs/muxes files with identical names.
         """
         if not os.path.exists(target_folder):
             print(f"❌ Error: Path not found -> {target_folder}")
             return False
 
-        print(f"📂 Batch Merger Scanning: {target_folder}")
+        print(f"\n📂 Onyx Batch Merger Scanning: {target_folder}")
         files = os.listdir(target_folder)
         success_count = 0
 
         for file in files:
             if file.lower().endswith(self.video_exts):
+                # Ignore files we already processed in a previous run
+                if file.startswith("Onyx_Merged_"):
+                    continue
+
                 base_name = os.path.splitext(file)[0]
                 video_path = os.path.join(target_folder, file)
                 
+                # Identify the track to merge based on mode
                 if mode == 'subtitle':
                     matching_track = self._find_matching_file(target_folder, base_name, self.sub_exts)
-                elif mode == 'audio':
+                else: # audio mode
                     matching_track = self._find_matching_file(target_folder, base_name, self.audio_exts)
 
                 if matching_track:
-                    output_name = f"{base_name}_Muxed.mkv"
+                    # Keep original extension or default to .mkv for high compatibility
+                    ext = os.path.splitext(file)[1]
+                    output_name = f"Onyx_Merged_{base_name}{ext}"
                     output_path = os.path.join(target_folder, output_name)
 
-                    # Feed it to your original, perfect single-file functions!
                     if mode == 'subtitle':
                         if self.mux_subtitles(video_path, matching_track, output_path):
                             success_count += 1
-                    elif mode == 'audio':
+                    else:
                         if self.merge_video_audio(video_path, matching_track, output_path):
                             success_count += 1
 
         print("-" * 50)
         if success_count > 0:
-            print(f"🎉 BATCH COMPLETE: {success_count} files successfully muxed.")
+            print(f"🎉 BATCH COMPLETE: {success_count} files successfully processed.")
         else:
-            print("⚠️ No matching pairs found. (Make sure video and track names match perfectly!)")
+            print("⚠️ No matching pairs found. (Ensure filenames match perfectly!)")
         print("-" * 50)
         return True
 

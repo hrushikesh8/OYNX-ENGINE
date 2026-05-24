@@ -14,9 +14,12 @@ class MotionFluidizer:
     def __init__(self, bin_folder="bin"):
         """
         Initializes the path to the AI interpolation binaries.
-        Default expects 'rife-ncnn-vulkan.exe' in the /bin directory.
+        Can accept the absolute executable path directly, or a folder.
         """
-        self.ai_bin = os.path.join(bin_folder, "rife-ncnn-vulkan.exe")
+        if bin_folder.lower().endswith(".exe"):
+            self.ai_bin = bin_folder
+        else:
+            self.ai_bin = os.path.join(bin_folder, "rife-ncnn-vulkan.exe")
 
     def smooth_motion(self, input_path: str, output_path: str, multiplier: int = 2):
         """

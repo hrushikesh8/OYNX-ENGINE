@@ -1,66 +1,57 @@
 import subprocess
 import os
 import sys
+import tempfile
 
 class VideoStitcher:
     def concat_videos(self, video_list: list, output_path: str):
         """
-        Joins multiple video files into one using the FFmpeg 'concat demuxer'.
-        Requirements: All videos must have the same codec/resolution.
+        Joins videos using the concat demuxer (Instant join).
+        Requirement: Matching resolution/codecs.
         """
         if not video_list:
             return False
 
-        # 1. Create a temporary text file listing all videos
-        # Format: file 'path/to/video.mp4'
-        list_file_path = "temp_stitch_list.txt"
-        with open(list_file_path, "w", encoding='utf-8') as f:
-            for vid in video_list:
-                # FFmpeg requires paths to be escaped strictly (ORIGINAL LOGIC PRESERVED)
-                safe_path = vid.replace("'", "'\\''") 
-                f.write(f"file '{safe_path}'\n")
-
-        # 2. Run FFmpeg concat command
-        # -f concat: Use the concat format
-        # -safe 0: Allow unsafe file paths (absolute paths)
-        # -c copy: No re-encoding (Instant join)
-        # -avoid_negative_ts make_zero: 🚀 SEAMLESS UPGRADE for perfect server playback
-        command = [
-            'ffmpeg', '-f', 'concat', '-safe', '0',
-            '-i', list_file_path,
-            '-c', 'copy', 
-            '-avoid_negative_ts', 'make_zero',
-            '-y', output_path
-        ]
-
+        # Use a unique temp file to prevent conflicts during parallel processing
+        fd, list_file_path = tempfile.mkstemp(suffix=".txt", prefix="onyx_stitch_")
+        
         try:
-            print(f"🔗 VidFlow Stitcher: Stitching {len(video_list)} files...")
+            with os.fdopen(fd, 'w', encoding='utf-8') as f:
+                for vid in video_list:
+                    # Ensure absolute paths for FFmpeg -safe 0
+                    abs_path = os.path.abspath(vid).replace("'", "'\\''")
+                    f.write(f"file '{abs_path}'\n")
+
+            command = [
+                'ffmpeg', '-f', 'concat', '-safe', '0',
+                '-i', list_file_path,
+                '-c', 'copy', 
+                '-avoid_negative_ts', 'make_zero',
+                '-y', output_path
+            ]
+
+            print(f"🔗 Onyx Stitcher: Joining {len(video_list)} segments...")
             subprocess.run(command, check=True, capture_output=True)
             
-            # Cleanup temp file
-            os.remove(list_file_path)
             return True
+            
         except subprocess.CalledProcessError as e:
-            print(f"❌ Error: {e.stderr.decode()}")
+            print(f"❌ FFmpeg Stitch Error: {e.stderr.decode()}")
+            return False
+        finally:
+            # Always clean up the temp file
             if os.path.exists(list_file_path):
                 os.remove(list_file_path)
-            return False
 
-# --- STANDALONE EXECUTION LOGIC (EXACT ORIGINAL) ---
 if __name__ == "__main__":
-    # Usage: python stitcher.py output.mp4 video1.mp4 video2.mp4 video3.mp4 ...
+    # Your original CLI logic remains compatible
     if len(sys.argv) < 3:
-        print("Usage: python stitcher.py <output_file> <input_video_1> <input_video_2> ...")
+        print("Usage: python stitcher.py <output_file> <input_video_1> ...")
         sys.exit(1)
 
-    output_file = sys.argv[1]
-    input_videos = sys.argv[2:]
-
     stitcher = VideoStitcher()
-    if stitcher.concat_videos(input_videos, output_file):
-        print(f"✅ Successfully stitched into: {output_file}")
-    else:
-        print("❌ Failed to stitch videos. Ensure they have matching formats.")
+    if stitcher.concat_videos(sys.argv[2:], sys.argv[1]):
+        print(f"✅ Success: {sys.argv[1]}")
 
 # ==========================================
 # HOW TO USE THIS CODE (EXAMPLE)

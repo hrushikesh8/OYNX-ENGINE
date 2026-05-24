@@ -4,6 +4,7 @@ from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
 from PyQt6.QtMultimediaWidgets import QVideoWidget
 from src.ui.custom_widgets import DropZone
 from src.processors import scene_sniper
+import os
 
 class SceneSniperUI(QWidget):
     """The Engine Room for Feature 12: Scene Sniper with Integrated Playback"""
@@ -172,13 +173,34 @@ class SceneSniperUI(QWidget):
         self.end_input.setText(self.format_time(pos))
 
     def execute_sniper(self):
+        # 1. Grab inputs
         file_path = self.drop_zone.file_input.text().strip()
         start = self.start_input.text().strip()
         end = self.end_input.text().strip()
-
+        
+        # 2. Validation: Ensure we have all three requirements
         if not file_path or not start or not end:
-            print("[UI Warning] Missing file path or timestamps.")
+            print("[UI Warning] Missing input! Need File, Start Time, and End Time.")
+            # Optional: You could show a QMessageBox here for better UX
             return
 
-        print(f"[UI] Routing to Backend: {file_path} | {start} -> {end}")
-        scene_sniper.run_sniper_workflow(file_path, start, end)
+        # 3. Create a smart output path (Saves in the same folder as the original)
+        base_dir = os.path.dirname(file_path)
+        file_name = os.path.basename(file_path)
+        name_only, ext = os.path.splitext(file_name)
+        
+        # Format: OriginalName_Snipe_00-01-05.mp4
+        output_name = f"{name_only}_Snipe_{start.replace(':', '-')}{ext}"
+        final_output = os.path.join(base_dir, output_name)
+
+        print(f"--- Sniper Initialized ---")
+        print(f"Target: {file_name} | Range: {start} -> {end}")
+
+        # 4. Call the Backend Processor
+        # Assuming you have: from src.processors import scene_sniper
+        success = scene_sniper.extract_scene(file_path, start, end, final_output)
+
+        if success:
+            print(f"[SUCCESS] Clip saved to: {final_output}")
+        else:
+            print(f"[ERROR] Sniper failed to extract clip.")
