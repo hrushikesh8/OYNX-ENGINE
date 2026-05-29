@@ -230,7 +230,8 @@ class TimelineComposer:
                     duration = clip.get('duration', 3.0)
                     print(f"⚡ Processing Slide #{idx+1} [IMAGE]: {os.path.basename(clip_path)} | Dur: {duration}s | Crop: {crop_aspect}")
                     
-                    # Convert image slide to video stream with silent audio standard
+                    # Execute the lavfi (Libavfilter) generator.
+                    # 'anullsrc' synthesizes a silent audio stream to satisfy container constraints for imagery.
                     cmd = [
                         'ffmpeg', '-y',
                         '-loop', '1',
@@ -387,6 +388,9 @@ class TimelineComposer:
                 num_inputs = len(mix_inputs)
                 if num_inputs > 1:
                     mix_str = "".join(mix_inputs)
+                    # Dynamically construct the 'amix' filter graph.
+                    # 'duration=first' anchors the output duration to the primary video stream.
+                    # 'dropout_transition=2' smooths volume normalization shifts when overlays terminate.
                     filter_parts.append(f"{mix_str}amix=inputs={num_inputs}:duration=first:dropout_transition=2[a]")
                     audio_map = "[a]"
                 elif num_inputs == 1:

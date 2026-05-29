@@ -21,14 +21,18 @@ class SettingsManager:
 
     @classmethod
     def get_video_encoder(cls, default="libx264"):
-        """Returns the appropriate video encoder based on hardware acceleration preference."""
+        """Resolves the system's hardware-accelerated H.264 video encoder API string."""
         s = cls.get_settings()
         hw_idx = s.get("hw_accel", 0)
         
-        # 0: CPU, 1: NVIDIA, 2: Intel QSV, 3: AMD AMF
+        # Hardware API Mapping:
+        # 1: NVIDIA NVENC (NVidia Encoder API)
+        # 2: Intel QSV (Quick Sync Video API)
+        # 3: AMD AMF (Advanced Media Framework API)
         if hw_idx == 1: return "h264_nvenc"
         if hw_idx == 2: return "h264_qsv"
         if hw_idx == 3: return "h264_amf"
+        # 0: Fallback to the highly compatible CPU-bound libx264 software encoder.
         return default
 
     @classmethod

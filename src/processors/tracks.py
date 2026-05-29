@@ -55,11 +55,13 @@ class TrackProcessor:
             print(f"   ⏳ Cleaning {label.capitalize()}: {os.path.basename(vid)}")
             out_path = os.path.splitext(vid)[0] + f"_clean_{label}.mkv"
             
-            # YOUR SMART FFmpeg COMMAND LOGIC
+            # --- DYNAMIC STREAM ROUTING ---
+            # -map 0: Globally includes all source streams.
+            # -map -0:{stream_type}: A negative map assertion to explicitly reject the target codec class.
             command = [
                 'ffmpeg', '-i', vid,
-                '-map', '0',                          # Step 1: Keep Everything
-                '-map', f'-0:{stream_type}'           # Step 2: Deselect ALL of this type
+                '-map', '0',                          
+                '-map', f'-0:{stream_type}'           
             ]
             
             # Step 3: Add back ONLY the specific track IDs
@@ -68,9 +70,9 @@ class TrackProcessor:
                 command.extend(['-map', f'0:{stream_type}:{idx}'])
                 
             command.extend([
-                '-c', 'copy',                         # Fast copy
-                '-ignore_unknown',                    # Safety net
-                '-avoid_negative_ts', 'make_zero',    # Timeline drift fix
+                '-c', 'copy',                         # Packet-level stream copy (Zero decoding).
+                '-ignore_unknown',                    # Suppresses abortions caused by esoteric metadata headers.
+                '-avoid_negative_ts', 'make_zero',    # Shifts PTS/DTS vectors to origin (0) to resolve container desync.
                 '-y', out_path
             ])
             

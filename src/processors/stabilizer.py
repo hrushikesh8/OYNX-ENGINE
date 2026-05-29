@@ -22,7 +22,9 @@ class VideoStabilizerProcessor:
         
         print(f"🎬 Initializing 2-Pass Video Stabilization for: {os.path.basename(input_path)}")
         
-        # Pass 1: Motion Detection (detect shakiness and write to transforms.trf)
+        # Pass 1: Motion Vector Analysis
+        # Utilizes the vidstabdetect filter to compute affine transformations between adjacent frames.
+        # Data is serialized into a .trf coordinate matrix file rather than modifying the video.
         print("🔍 Pass 1/2: Analyzing camera movement vectors...")
         pass1_cmd = [
             'ffmpeg', '-y',
@@ -40,7 +42,9 @@ class VideoStabilizerProcessor:
                 except Exception: pass
             return False
 
-        # Pass 2: Transformation (stabilize video using transforms.trf)
+        # Pass 2: Matrix Transformation & Frame Synthesis
+        # Executes vidstabtransform by reading the .trf matrix.
+        # Applies a Low-Pass Filter (smoothing factor) and bilinear interpolation to eliminate micro-jitter.
         print("🎥 Pass 2/2: Synthesizing stabilized video frames...")
         pass2_cmd = [
             'ffmpeg', '-y',
@@ -49,7 +53,7 @@ class VideoStabilizerProcessor:
             '-c:v', 'libx264',
             '-preset', 'fast',
             '-crf', '20',
-            '-c:a', 'copy',       # Keep original audio intact
+            '-c:a', 'copy',       # Bypasses the audio encoder to ensure absolute phase lock.
             '-ignore_unknown',
             output_path
         ]

@@ -16,7 +16,8 @@ class SilenceRemover:
             return False
 
         print(f"⚡ Detecting silent segments (Threshold: {noise_db}dB, Min Len: {min_silence_len}s)...")
-        # Step 1: Detect silent intervals
+        # Step 1: Perform a high-speed audio-only analysis pass utilizing the internal 'silencedetect' graph filter.
+        # Outputting to the 'null' muxer prevents writing a dummy file to disk during the analytical phase.
         cmd = [
             'ffmpeg', '-i', input_path,
             '-af', f'silencedetect=noise={noise_db}dB:duration={min_silence_len}',
@@ -72,7 +73,9 @@ class SilenceRemover:
                     f.write(f"inpoint {start}\n")
                     f.write(f"outpoint {end}\n")
 
-            # Step 4: Run FFmpeg concat demuxer
+            # Step 4: Execute the FFmpeg concat demuxer process synchronously.
+            # -f concat allows us to stitch multiple in/out segments of the same file sequentially
+            # while maintaining the -c copy strictness (Zero re-encoding logic).
             concat_cmd = [
                 'ffmpeg', '-y',
                 '-f', 'concat', '-safe', '0',

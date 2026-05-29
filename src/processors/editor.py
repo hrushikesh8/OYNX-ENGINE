@@ -20,6 +20,8 @@ class VideoEditor:
             "[b]scale=1080:-2[fg];"
             "[bg][fg]overlay=(W-w)/2:(H-h)/2"
         )
+        
+        # Resolve the optimal hardware or software video encoder based on the system's global SettingsManager.
         encoder = SettingsManager.get_video_encoder("libx264")
         command = [
             'ffmpeg', '-i', input_path,
@@ -48,11 +50,11 @@ class VideoEditor:
         
         command = [
             'ffmpeg', '-i', input_path, 
-            '-map', '0:v', '-map', '0:a?',
-            '-c', 'copy', '-f', 'segment',
+            '-map', '0:v', '-map', '0:a?',     # Isolate video and audio (if present), intentionally discarding subtitles for segmenting.
+            '-c', 'copy', '-f', 'segment',     # Utilize the segment muxer to natively split the stream without transcoding.
             '-segment_time', str(segment_time), 
             '-reset_timestamps', '1',
-            '-avoid_negative_ts', 'make_zero', # 🚀 UPGRADE: Perfect for re-merging
+            '-avoid_negative_ts', 'make_zero', # 🚀 UPGRADE: Perfect for re-merging by aligning PTS/DTS offsets to 0.
             '-y', output_pattern
         ]
         try:

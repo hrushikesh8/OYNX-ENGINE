@@ -17,6 +17,7 @@ class MetadataEditor:
         if not os.path.exists(input_path):
             return {}
 
+        # Construct the FFprobe command to dump container formatting data purely as a JSON object
         cmd = [
             'ffprobe', '-v', 'error',
             '-show_entries', 'format',
@@ -24,10 +25,13 @@ class MetadataEditor:
             input_path
         ]
         try:
+            # Execute FFprobe and capture the standard output securely for parsing
             output = subprocess.check_output(cmd)
             data = json.loads(output)
+            # Safely navigate the JSON tree to return existing container tags, defaulting to an empty dict
             return data.get('format', {}).get('tags', {})
         except Exception as e:
+            # Isolate FFprobe read failures without bubbling the exception to the UI
             print(f"❌ Error reading metadata tags: {e}")
             return {}
 
@@ -37,21 +41,22 @@ class MetadataEditor:
         Returns the command list to be executed by the TaskWorker.
         """
         # Map 0 (all streams) and copy codecs (lossless, instant)
-        # Use subtitle safeguard if requested by the user
+        # Conditional stream mapping to intelligently safeguard MKV subtitle tracks based on user settings
         maps = ['-map', '0:v', '-map', '0:a?'] if SettingsManager.should_safeguard_subtitles() else ['-map', '0']
         
         cmd = [
             'ffmpeg', '-y',
             '-i', input_path,
         ] + maps + [
-            '-c', 'copy',
-            '-ignore_unknown'
+            '-c', 'copy',          # Engage stream-copy mode to avoid re-encoding latency and quality degradation
+            '-ignore_unknown'      # Mitigate crashes caused by unsupported stream types in obscure container formats
         ]
 
-        # Add global metadata flags
+        # Iteratively append standard metadata injection flags for each key-value pair provided
         for key, val in tags.items():
             cmd.extend(['-metadata', f'{key}={val}'])
 
+        # Finalize the command array with the designated output path
         cmd.append(output_path)
         return cmd
 

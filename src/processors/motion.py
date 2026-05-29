@@ -40,9 +40,9 @@ class MotionFluidizer:
             print("Ensure the RIFE-NCNN-Vulkan binaries are present in your /bin folder.")
             return False
 
-        # CLI Parameters for the RIFE Engine:
-        # -m: Multiplier (2, 4, 8x)
-        # -g: GPU ID (Defaults to 0)
+        # CLI Parameters for the RIFE-NCNN-Vulkan Engine:
+        # -m: Target temporal upsampling multiplier (e.g., 2 for 30->60 FPS interpolation).
+        # -g: Hardware interface specification (Defaults to 0 for the primary discrete GPU).
         command = [
             self.ai_bin,
             "-i", input_path,

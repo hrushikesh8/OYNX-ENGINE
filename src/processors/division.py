@@ -20,17 +20,17 @@ class VideoDivider:
         # -map 0: Keeps all Audio and Subtitles.
         # -c copy: Zero quality loss.
         # -reset_timestamps 1: Essential for standalone playback of chunks.
-        # -avoid_negative_ts make_zero: UPGRADE - Ensures chunks join perfectly later.
-        # 🚀 UPGRADE: Conditionally apply subtitle safeguard
+        # -avoid_negative_ts make_zero: UPGRADE - Ensures chunks join perfectly later by shifting PTS/DTS to 0.
+        # 🚀 UPGRADE: Conditionally apply subtitle safeguard by evaluating global settings.
         maps = ['-map', '0:v', '-map', '0:a?'] if SettingsManager.should_safeguard_subtitles() else ['-map', '0']
         
         command = [
             'ffmpeg', '-i', input_path, 
         ] + maps + [
             '-c', 'copy', 
-            '-f', 'segment', 
+            '-f', 'segment',                  # Engage the segment muxer to split the file dynamically based on time.
             '-segment_time', str(segment_time), 
-            '-reset_timestamps', '1', 
+            '-reset_timestamps', '1',         # Recalculate PTS (Presentation Time Stamp) for each individual chunk.
             '-avoid_negative_ts', 'make_zero', 
             '-ignore_unknown', 
             '-y', output_pattern
@@ -38,6 +38,7 @@ class VideoDivider:
         
         try:
             print(f"✂️  VidFlow Division: Dividing into chunks of {segment_time}...")
+            # Capture standard output and error to prevent CLI spam while ensuring errors are identifiable via CalledProcessError.
             subprocess.run(command, check=True, capture_output=True)
             
             # ---> TIME MACHINE LOGGING <---
@@ -83,7 +84,7 @@ class VideoDivider:
 
             # --- PART 2 GENERATION ---
             print(f"✂️  Generating Part 2 ({split_time} -> End)...")
-            # Uses -ss BEFORE -i for the fastest seeking to the second half.
+            # Uses -ss BEFORE -i for the fastest input-seeking to the second half, snapping to the nearest I-frame.
             cmd2 = [
                 'ffmpeg', '-ss', str(split_time), 
                 '-i', input_path, 

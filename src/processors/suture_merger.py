@@ -10,7 +10,7 @@ def get_frame_fingerprint(frame):
     return cv2.resize(gray, (64, 64))
 
 def find_overlap_match(part1, part2, scan_duration=60):
-    """Uses CV to find the exact frame where Part 2 begins inside Part 1."""
+    """Executes a geometric matrix comparison (MSE) to pinpoint temporal overlap boundaries."""
     cap1 = cv2.VideoCapture(part1)
     cap2 = cv2.VideoCapture(part2)
     
@@ -36,7 +36,9 @@ def find_overlap_match(part1, part2, scan_duration=60):
         if not ret1: break
         
         current_fp = get_frame_fingerprint(frame1)
-        # Mean Squared Error comparison
+        # Mean Squared Error (MSE) comparison:
+        # Calculates the average of the squares of the pixel differential between the two matrices.
+        # A lower float value indicates higher perceptual similarity.
         diff = np.mean((current_fp.astype("float") - target_fp.astype("float")) ** 2)
         
         if diff < min_diff:

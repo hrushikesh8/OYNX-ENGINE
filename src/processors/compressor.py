@@ -4,6 +4,10 @@ import sys
 
 class VideoCompressor:
     def compress_audio_maintain_video(self, input_path: str, output_path: str, bitrate="384k") -> bool:
+        """Executes a selective stream multiplexing operation, preserving bit-perfect video quality while applying lossy AAC compression to the audio stream."""
+        # Construct the FFmpeg command array for selective transcoding.
+        # -map 0 ensures all global streams (video, audio, subtitles) are initially selected.
+        # -c:v copy bypasses the video encoder entirely, yielding a zero-loss visual transfer.
         command = [
             'ffmpeg', '-i', input_path,
             '-map', '0', '-c:v', 'copy',
@@ -11,9 +15,11 @@ class VideoCompressor:
             '-c:s', 'copy', '-y', output_path
         ]
         try:
+            # Execute the compression sequence synchronously and capture stdout to prevent UI threading deadlocks.
             subprocess.run(command, check=True, capture_output=True)
             return True
         except subprocess.CalledProcessError as e:
+            # Silently isolate sub-process failures to maintain main application stability.
             return False
 
 # --- STANDALONE EXECUTION LOGIC ---

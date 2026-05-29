@@ -60,16 +60,16 @@ class StreamLadder:
             output_path = os.path.join(output_folder, output_name)
 
             # FFmpeg Command Logic:
-            # -vf scale: Uses Lanczos algorithm to maintain high clarity when shrinking.
-            # -b:v: Sets a target bitrate to ensure smooth streaming.
-            # -preset fast: Balances encoding speed with final file quality.
+            # -vf scale: Employs the Lanczos resampling algorithm for optimal artifact mitigation during spatial downsampling.
+            # -b:v: Dictates the target video bitrate bound for Variable Bitrate (VBR) network streaming.
+            # -preset fast: Optimizes the H.264 macroblock search algorithm to balance execution speed and compression efficiency.
             command = [
                 'ffmpeg', '-i', input_path,
                 '-vf', f"scale={config['width']}:-2:flags=lanczos",
                 '-c:v', 'libx264', 
                 '-b:v', config['bitrate'], 
                 '-preset', 'fast',
-                '-c:a', 'aac', '-b:a', '128k', # Standard high-compatibility audio
+                '-c:a', 'aac', '-b:a', '128k', # Standardizes audio encoding to high-compatibility AAC.
                 '-y', output_path
             ]
 

@@ -20,7 +20,8 @@ def get_watermark_coords(video_path):
     print("2. Press 'SPACE' or 'ENTER' to confirm.")
     print("3. Press 'c' to cancel.")
     
-    # Let user select the Region of Interest (ROI)
+    # Halts execution and spawns a native OS frame window.
+    # Enables the user to define a geometric Region of Interest (ROI) via mouse cursor.
     roi = cv2.selectROI("Select Watermark (Press ENTER to confirm)", frame, showCrosshair=True, fromCenter=False)
     cv2.destroyAllWindows()
 
@@ -58,8 +59,9 @@ def run_delogo_workflow(target_path):
     base_name = os.path.basename(target_path).replace(ext, "")
     output_name = os.path.join(base_dir, f"{base_name}_Cleaned{ext}")
 
-    # -vf delogo applies the spatial interpolation
-    # -c:a copy preserves the audio tracks untouched
+    # Construct FFmpeg Pipeline
+    # -vf delogo: Implements the spatial in-painting algorithm over the predefined coordinate matrix.
+    # -c:a copy: Bypasses the audio encoder array.
     cmd = [
         'ffmpeg', '-y', 
         '-i', target_path, 

@@ -10,8 +10,8 @@ class TrackProcessor:
         stream_type: 'a' for audio, 's' for subtitles.
         """
         # --- FFPROBE CONFIGURATION ---
-        # We use ffprobe to 'peek' inside the file without opening the video stream.
-        # It extracts index numbers, language tags, and track titles in JSON format.
+        # Construct the FFprobe command array to strictly dump stream metadata in a JSON schema.
+        # This executes without decoding the media payloads, isolating metadata indices and language tags.
         cmd = [
             'ffprobe', '-v', 'error',
             '-show_entries', 'stream=index:stream_tags=language,title',
@@ -64,27 +64,25 @@ class TrackProcessor:
             out_path = os.path.splitext(vid)[0] + f"_clean_{label}.mkv"
             
             # --- THE SMART FFmpeg COMMAND ---
-            # Step 1: '-map 0' selects EVERYTHING from the source.
-            # Step 2: '-map -0:type' is a NEGATIVE map. It deselects all tracks of that type.
-            # Step 3: We then loop through the user's choices and surgically add them back.
+            # Step 1: '-map 0' initializes the mapping stack with all available streams globally.
+            # Step 2: '-map -0:type' executes a negative map exclusion to purge the target stream class.
             command = [
                 'ffmpeg', '-i', vid,
                 '-map', '0',                   
                 '-map', f'-0:{stream_type}'    
             ]
             
-            # Step 3: Re-add ONLY the specific track IDs the user requested.
+            # Step 3: Iteratively append exact map inclusions for the preserved stream indices.
             for idx in track_indices:
                 command.extend(['-map', f'0:{stream_type}:{idx}'])
                 
             # --- EXECUTION FLAGS ---
-            # '-c copy' is critical: It keeps original quality and finishes in seconds.
-            # '-ignore_unknown' prevents crashes if a file has weird/broken metadata.
+            # Bypass transcoders using '-c copy' to force a direct packet-level stream multiplexing pass.
             command.extend([
                 '-c', 'copy',                  
                 '-ignore_unknown',             
                 '-y', out_path
-            ] )
+            ])
             
             try:
                 # Running the command silently (capture_output) to keep the terminal clean.

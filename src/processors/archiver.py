@@ -52,11 +52,13 @@ class FolderArchiver:
                     
                     zip_file_path = f"{item_path}.zip"
                     
-                    # 🚀 DUAL-MODE ENGINE: Uses whatever engine the user selected
+                    # 🚀 DUAL-MODE ENGINE: Dynamically instantiates the ZipFile object using the selected compression backend.
                     with zipfile.ZipFile(zip_file_path, 'w', zip_engine) as zipf:
+                        # Recursively traverse the directory tree utilizing OS-level path walking.
                         for root, _, files in os.walk(item_path):
                             for file in files:
                                 file_path = os.path.join(root, file)
+                                # Compute the relative path vector to preserve the directory structure within the archive envelope.
                                 archive_name = os.path.relpath(file_path, item_path)
                                 zipf.write(file_path, archive_name)
                     

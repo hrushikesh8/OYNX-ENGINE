@@ -26,12 +26,12 @@ class AudioExtractor:
         output_path = os.path.join(output_folder, f"{filename}{suffix}.{ext}")
 
         # --- THE COMMAND (UPGRADED) ---
-        # Instead of just '-vn' (which blindly grabs default audio), we use '-map 0:a:X'.
-        # This surgically targets the exact audio channel you want.
+        # Construct the FFmpeg demuxing array.
+        # -map 0:a:{track_id} surgically isolates a specific discrete audio channel, overriding the default behavior of -vn.
         command = [
             'ffmpeg', '-i', input_path, 
             '-map', f'0:a:{track_id}', 
-            '-avoid_negative_ts', 'make_zero' # 🚀 SEAMLESS SERVER UPGRADE
+            '-avoid_negative_ts', 'make_zero' # 🚀 SEAMLESS SERVER UPGRADE: Aligns PTS to prevent playback sync drift.
         ]
 
         if output_format == "original":
@@ -67,10 +67,11 @@ class AudioExtractor:
         """
         print(f"📂 VidFlow Batch: Scanning '{os.path.basename(folder_path)}' for videos...")
         
-        # Search for common video formats recursively
+        # Search for common video formats recursively utilizing system-level pattern matching
         search_patterns = ['*.mp4', '*.mkv', '*.avi', '*.mov', '*.webm']
         tasks = []
         for ext in search_patterns:
+            # Construct a comprehensive file manifest prior to iterative subprocess execution
             tasks.extend(glob.glob(os.path.join(folder_path, '**', ext), recursive=True))
 
         if not tasks:

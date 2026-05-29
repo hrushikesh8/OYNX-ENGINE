@@ -4,7 +4,10 @@ import subprocess
 import os
 
 def get_frame_fingerprint(frame):
+    """Generates a normalized grayscale geometric hash array for perceptual frame comparison."""
+    # Convert the BGR color matrix to a single-channel grayscale matrix to isolate luminance.
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    # Downsample the matrix to 64x64 utilizing bilinear interpolation to eliminate high-frequency noise.
     return cv2.resize(gray, (64, 64))
 
 def find_merge_indices(part1_path, part2_path, overlap_duration=60):
@@ -60,11 +63,14 @@ def execute_final_merge(part1, part2, match_frame, target_folder):
     print(f"---> Match detected at {timestamp:.2f}s.")
     print(f"---> Executing Native Concat Suture for {ext.upper()}...")
 
+    # Generate the strict FFmpeg concat demuxer manifest file natively.
     with open(list_file, "w", encoding="utf-8") as f:
         f.write(f"file '{part1.replace(os.sep, '/')}'\n")
-        f.write(f"outpoint {timestamp}\n") 
+        f.write(f"outpoint {timestamp}\n") # Instructs the demuxer to terminate reading at the precise frame overlap.
         f.write(f"file '{part2.replace(os.sep, '/')}'\n")
 
+    # Construct the native stream concatenation command.
+    # -f concat: Engages the concat demuxer which operates at the packet level, bypassing decoding/encoding.
     cmd = [
         'ffmpeg', '-y', '-f', 'concat', '-safe', '0', 
         '-i', list_file, '-c', 'copy', final_output

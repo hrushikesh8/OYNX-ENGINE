@@ -24,7 +24,7 @@ class RemasterService:
         sample_raw = "temp_raw_slice.mp4"
         sample_final = self.output_base / f"SAMPLE_{input_path.name}"
 
-        # Extracting the 2-minute slice
+        # Extracting the 2-minute temporal slice natively to prevent re-encoding latency.
         self._run_cmd([
             "ffmpeg", "-y", "-ss", "00:05:00", "-t", "00:02:00",
             "-i", str(input_path), "-c", "copy", sample_raw
@@ -54,20 +54,22 @@ class RemasterService:
         # Dynamic AI engine executable from settings
         ai_engine = self.ai_engine
 
-        # Step A: AI Upscaling (Utilizing RTX GPU)
+        # Step A: AI Spatial Upsampling (Utilizing Vulkan/Tensor hardware acceleration)
+        # -s 2: Executes a 2x algorithmic upscale resolution multiplier.
+        # -n: Defines the specific pre-trained neural network weights applied during reconstruction.
         self._run_cmd([
             ai_engine, "-i", in_file, "-o", temp_upscale,
             "-s", "2", "-n", "realesr-general-x4v3"
         ])
 
-        # Step B: Cinematic Polish & H.265 (HEVC) Encoding
-        # -crf 22: High quality, 30-50% size increase
-        # noise=alls=3: Adds the 'Godfather' theatrical film grain
+        # Step B: Color Grading & High-Efficiency Video Coding (HEVC/H.265)
+        # -crf 22: Establishes a highly efficient Constant Rate Factor, prioritizing perceptual transparency.
+        # noise=alls=3: Injects algorithmic film grain to mask upscaling artifacts and restore cinematic texture.
         self._run_cmd([
             "ffmpeg", "-y", "-i", temp_upscale,
             "-vf", "eq=saturation=1.1:contrast=1.03, noise=alls=3:allf=t",
             "-c:v", "libx265", "-crf", "22", "-preset", "slow",
-            "-c:a", "copy", # Preserving original movie audio mix
+            "-c:a", "copy", # Bypasses audio transcoding to maintain strict origin fidelity.
             out_file
         ])
 

@@ -36,13 +36,18 @@ class AudioTranscriber:
         temp_audio = os.path.join(os.path.dirname(input_video), "temp_extract_voice.wav")
         print(f"🔊 Extracting voice track to: {temp_audio}...")
         
+        # Step 1: Acoustic Stream Isolation
+        # -vn: Purges the video stream to isolate the audio matrix.
+        # -acodec pcm_s16le: Forces an uncompressed 16-bit PCM WAV encoding to prevent compression artifacts.
+        # -ar 16000: Downsamples to a 16kHz frequency (The optimal resolution for Neural Speech Recognition models).
+        # -ac 1: Downmixes to a mono channel to unify acoustic data.
         extract_cmd = [
             'ffmpeg', '-y',
             '-i', input_video,
-            '-vn',                # No video
-            '-acodec', 'pcm_s16le', # Uncompressed PCM WAV
-            '-ar', '16000',       # 16kHz sample rate (optimal for speech tools)
-            '-ac', '1',           # Mono channel
+            '-vn',                
+            '-acodec', 'pcm_s16le', 
+            '-ar', '16000',       
+            '-ac', '1',           
             temp_audio
         ]
         
@@ -58,6 +63,8 @@ class AudioTranscriber:
             print(f"🧠 Loading Whisper AI model ({model_name}). Please wait...")
             model = whisper.load_model(model_name)
             
+            # Step 2: Natural Language Processing (NLP) Transcription
+            # Executes the transcription inference utilizing the specified neural weight architecture.
             print("🎙️ Running Speech-to-Text Transcription...")
             options = {}
             if language:

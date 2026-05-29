@@ -22,11 +22,14 @@ class VideoStitcher:
                     abs_path = os.path.abspath(vid).replace("'", "'\\''")
                     f.write(f"file '{abs_path}'\n")
 
+            # Construct the Concat Demuxer instruction array natively.
+            # -f concat: Processes inputs synchronously at the packet level.
+            # -safe 0: Overrides FFmpeg security policies to permit absolute OS path addressing.
             command = [
                 'ffmpeg', '-f', 'concat', '-safe', '0',
                 '-i', list_file_path,
                 '-c', 'copy', 
-                '-avoid_negative_ts', 'make_zero',
+                '-avoid_negative_ts', 'make_zero', # Mitigates PTS/DTS desyncs at join boundaries.
                 '-y', output_path
             ]
 

@@ -23,6 +23,7 @@ class ColorStudioProcessor:
         print(f"🎬 Initializing Color Studio Pipeline for: {os.path.basename(input_path)}...")
         print(f"🔧 Adjustments -> Brightness: {brightness}, Contrast: {contrast}, Saturation: {saturation}, Gamma: {gamma}")
 
+        # Initialize the FFmpeg video filter chain array to construct a complex filter graph dynamically.
         filter_chain = []
         
         # Build the standard eq video filter
@@ -33,33 +34,35 @@ class ColorStudioProcessor:
         eq_filter = f"eq=brightness={brightness}:contrast={contrast}:saturation={saturation}:gamma={gamma}"
         filter_chain.append(eq_filter)
 
-        # Apply 3D LUT file if provided
+        # Apply 3D LUT file if provided for cinematic color grading
         if lut_path and os.path.isfile(lut_path):
             print(f"🎨 Embedding 3D LUT Table: {os.path.basename(lut_path)}")
-            # Escape Windows paths properly for FFmpeg filter parsing
+            # Escape Windows filesystem paths to conform with FFmpeg's strict syntax requirements for the lut3d filter.
             clean_lut_path = lut_path.replace("\\", "/").replace(":", "\\:")
             filter_chain.append(f"lut3d=file='{clean_lut_path}'")
 
+        # Compile the individual filter strings into a single comma-separated video filter (vf) argument.
         vf_str = ",".join(filter_chain)
 
         cmd = [
             'ffmpeg', '-y',
             '-i', input_path,
-            '-vf', vf_str,
-            '-c:v', 'libx264',
-            '-preset', 'fast',
-            '-crf', '20',
-            '-c:a', 'copy',       # Copy audio streams untouched
-            '-ignore_unknown',
+            '-vf', vf_str,        # Pass the constructed video filter graph
+            '-c:v', 'libx264',    # Enforce standard H.264 video encoding
+            '-preset', 'fast',    # Balance between encoding speed and compression ratio
+            '-crf', '20',         # Constant Rate Factor: 20 ensures near-transparent visual quality
+            '-c:a', 'copy',       # Multiplex original audio streams untouched to preserve fidelity
+            '-ignore_unknown',    # Bypass non-standard data streams (e.g., proprietary metadata) to prevent failure
             output_path
         ]
 
         try:
-            # Execute FFmpeg process
+            # Execute FFmpeg process synchronously; suppress verbose output to maintain clean UI logs
             subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
             print(f"✅ Color grading complete! Saved at: {output_path}")
             return True
         except subprocess.CalledProcessError as e:
+            # Safely capture and isolate sub-process failures
             print(f"❌ Color Studio Engine failure: {str(e)}")
             return False
 

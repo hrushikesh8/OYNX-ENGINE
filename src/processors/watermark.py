@@ -11,13 +11,14 @@ class Watermarker:
         """
         
         # --- THE CONTROL CENTER (Coordinate Logic) ---
-        # main_w/main_h = Video size | overlay_w/overlay_h = Logo size
-        # We use a 10-pixel offset to keep the logo slightly away from the absolute edge.
+        # Implements a dynamic relative geometry system.
+        # 'main_w/main_h' references the primary video matrix. 'overlay_w/overlay_h' references the alpha-channel graphic.
+        # Includes a rigid 10-pixel buffer offset to ensure title-safe compliance.
         coords = {
-            "tl": "10:10",                                   # Top-Left
-            "tr": "main_w-overlay_w-10:10",                 # Top-Right
-            "bl": "10:main_h-overlay_h-10",                 # Bottom-Left
-            "br": "main_w-overlay_w-10:main_h-overlay_h-10",# Bottom-Right
+            "tl": "10:10",                                   
+            "tr": "main_w-overlay_w-10:10",                 
+            "bl": "10:main_h-overlay_h-10",                 
+            "br": "main_w-overlay_w-10:main_h-overlay_h-10",
             "center": "(main_w-overlay_w)/2:(main_h-overlay_h)/2"
         }
         
@@ -25,11 +26,12 @@ class Watermarker:
         overlay_setting = coords.get(position.lower(), coords["br"])
 
         # --- FFmpeg EXECUTION ---
+        # filter_complex=overlay executes a localized compositing pass to blend the alpha layer over the frame sequence.
         command = [
             'ffmpeg', '-i', video_path, '-i', image_path,
             '-filter_complex', f"overlay={overlay_setting}",
-            '-c:a', 'copy',                 # Original audio stays high-quality
-            '-avoid_negative_ts', 'make_zero', # 🚀 SEAMLESS JOIN UPGRADE
+            '-c:a', 'copy',                 # Bypass audio transcoding to maintain origin fidelity.
+            '-avoid_negative_ts', 'make_zero', # Re-synchronizes PTS/DTS timestamps.
             '-y', output_path
         ]
 
@@ -73,8 +75,8 @@ if __name__ == "__main__":
         🚀 NEW: Removes a watermark using AI-style in-painting (delogo).
         Requires exact coordinates (x, y) and dimensions (width, height) of the logo.
         """
-        # --- DELOGO COMMAND ---
-        # -vf delogo=x:y:w:h : Targets a specific box and blurs the surrounding pixels over it.
+        # --- AI IN-PAINTING COMMAND ---
+        # -vf delogo targets the geometric bounding box (x,y,w,h) and applies an interpolative pixel bleed to mask the graphic.
         command = [
             'ffmpeg', '-i', video_path,
             '-vf', f"delogo=x={x}:y={y}:w={w}:h={h}",

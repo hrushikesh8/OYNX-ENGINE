@@ -32,9 +32,10 @@ class MediaIntel:
         print(f"🧠 VidFlow Intel Service: Analyzing Scene Architecture...")
         print(f"🎬 Target: {os.path.basename(input_path)}")
         
-        # FFmpeg 'scdet' (Scene Detect) Filter:
-        # 'gt(scene,0.4)' means a 40% difference triggers a scene detection.
-        # This outputs the metadata to the log for parsing.
+        # FFmpeg 'scdet' (Scene Detect) Filter Configuration:
+        # 'gt(scene,0.4)' evaluates inter-frame luminance and chrominance deviations.
+        # A 40% differential triggers a structural scene break, outputting PTS metadata natively.
+        # Outputting to the 'null' muxer prevents writing a dummy video stream.
         command = [
             'ffmpeg', '-i', input_path,
             '-filter:v', "select='gt(scene,0.4)',metadata=print",
@@ -44,11 +45,11 @@ class MediaIntel:
         try:
             print("💎 Identifying scene cuts and generating timestamps. Please wait...")
             
-            # We capture the output to parse the timestamps later
+            # We capture standard error natively since FFmpeg routes all filter metadata output to stderr.
             result = subprocess.run(command, check=True, capture_output=True, text=True)
             
-            # Simple Regex to extract timestamps from the metadata output
-            # Look for 'pts_time:XXXX.XXXXX' in the output
+            # Execute a lightweight Regex pass to extract precise Presentation Time Stamps (PTS).
+            # Captures 'pts_time:XXXX.XXXXX' values representing exact structural cuts.
             timestamps = re.findall(r'pts_time:(\d+\.\d+)', result.stderr)
             
             if timestamps:

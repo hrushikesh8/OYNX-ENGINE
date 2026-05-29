@@ -15,15 +15,17 @@ class StreamMerger:
         """Combines visuals with a separate audio file instantly."""
         print(f"   🔗 VidFlow Merger: {os.path.basename(video_path)} + {os.path.basename(audio_path)}")
         
+        # FFmpeg Multiplexing Engine:
+        # Assembles distinct A/V streams into a unified container dynamically.
         command = [
             'ffmpeg', '-y',
             '-i', video_path,
             '-i', audio_path,
-            '-map', '0:v:0',      # Video from Input 0
-            '-map', '1:a:0',      # Audio from Input 1
-            '-c', 'copy',         # Direct stream copy (No re-encoding)
-            '-shortest',          # Stops when the shortest stream ends
-            '-ignore_unknown',
+            '-map', '0:v:0',      # Extracts the primary video stream (Index 0) from the first input array.
+            '-map', '1:a:0',      # Extracts the primary audio stream (Index 0) from the second input array.
+            '-c', 'copy',         # Direct stream copy (Zero re-encoding overhead or quality degradation).
+            '-shortest',          # Terminates the multiplexing process synchronously when the shortest stream concludes.
+            '-ignore_unknown',    # Bypasses anomalous metadata headers to prevent stream abortion.
             output_path
         ]
         
@@ -37,13 +39,15 @@ class StreamMerger:
         """Embeds a subtitle file into a video container."""
         print(f"   📝 Muxing Subs: {os.path.basename(video_path)} + {os.path.basename(sub_path)}")
 
+        # FFmpeg Subtitle Encapsulation:
+        # Injects textual data streams (soft subs) into the video container without burning them into the video frames.
         command = [
             'ffmpeg', '-y',
             '-i', video_path,
             '-i', sub_path,
-            '-map', '0',          # Take everything from original video
-            '-map', '1',          # Add the subtitle file
-            '-c', 'copy'          # Copy all streams
+            '-map', '0',          # Aggregates all existing elementary streams from the origin video.
+            '-map', '1',          # Appends the targeted external subtitle data stream.
+            '-c', 'copy'          # Executes a raw multiplexing operation across all mapped streams.
         ]
 
         # CRITICAL FIX: MP4 files do not support 'srt' codec. They need 'mov_text'.
@@ -92,7 +96,7 @@ class StreamMerger:
                 base_name = os.path.splitext(file)[0]
                 video_path = os.path.join(target_folder, file)
                 
-                # Identify the track to merge based on mode
+                # Identify the corresponding target track utilizing the localized extension resolution logic
                 if mode == 'subtitle':
                     matching_track = self._find_matching_file(target_folder, base_name, self.sub_exts)
                 else: # audio mode

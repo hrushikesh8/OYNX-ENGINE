@@ -34,10 +34,10 @@ class EnterpriseUnarchiver:
         print(f"📦 Target: {os.path.basename(zip_path)}")
         print(f"📂 Dest: {output_folder}")
 
-        # --- THE 7-ZIP COMMAND ---
-        # x  = Extract with full paths
-        # -o = Output directory (must be attached to the path, no space)
-        # -y = Assume "Yes" to all prompts (don't pause the script)
+        # --- NATIVE BINARY EXECUTION (7-Zip C++) ---
+        # x: Instructs the engine to extract files while preserving the full internal directory structure.
+        # -o: Defines the absolute output directory path (Syntax requirement: No space between flag and string).
+        # -y: Suppresses interactive prompts to facilitate automated backend processing.
         command = [
             self.engine_path, 
             'x', zip_path, 

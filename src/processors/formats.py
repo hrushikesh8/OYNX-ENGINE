@@ -26,15 +26,16 @@ class FormatMapper:
         filename = Path(input_path).stem
         output_path = os.path.join(output_folder, f"{filename}.{target_format}")
         
-        # Get flags from our rules, default to simple copy if unknown
+        # Retrieve pre-defined container encoding directives, defaulting to a lossless stream copy.
         cmd_flags = self.FORMAT_RULES.get(target_format, ['-c', 'copy'])
         
-        # 🚀 UPGRADE: Force video & audio only if Subtitle Safeguard is enabled
+        # 🚀 UPGRADE: Force video & audio only if Subtitle Safeguard is enabled to prevent MKV subtitle demuxing failures.
         if SettingsManager.should_safeguard_subtitles():
             cmd_flags = ['-map', '0:v', '-map', '0:a?'] + cmd_flags
 
         print(f"    🔄 Converting: {filename} -> .{target_format}")
         
+        # Assemble the final execution array, explicitly ignoring unknown streams (e.g., proprietary proprietary data blocks).
         command = ['ffmpeg', '-i', input_path, *cmd_flags, '-ignore_unknown', '-y', output_path]
         
         try:
@@ -62,7 +63,7 @@ class FormatMapper:
                 '*.mpg', '*.mpeg', '*.webm', '*.m4v', '*.ts', '*.vob', '*.3gp'
             )
             for ext in extensions:
-                # YOUR ORIGINAL RECURSIVE LOGIC
+                # YOUR ORIGINAL RECURSIVE LOGIC: Traverses the directory tree to build a unified processing manifest.
                 tasks.extend(glob.glob(os.path.join(input_path, '**', ext), recursive=True))
         
         elif os.path.isfile(input_path):

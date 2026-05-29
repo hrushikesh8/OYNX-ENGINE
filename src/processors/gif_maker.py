@@ -23,18 +23,19 @@ class GifMaker:
 
         try:
             print(f"🎨 VidFlow GIF: Generating high-quality palette (Preset: {preset})...")
-            # Pass 1: Generate Palette
+            # Pass 1: Generate Palette globally from the designated temporal window.
             subprocess.run([
                 'ffmpeg', '-ss', start_time, '-t', duration, '-i', input_path,
                 '-vf', f"{filters},palettegen", '-y', palette
             ], check=True, capture_output=True)
 
             print(f"🎬 VidFlow GIF: Encoding final animation...")
-            # Pass 2: Generate GIF using the palette
+            # Pass 2: Generate GIF via complex filter mapping (paletteuse).
+            # [x] bounds the filtered video stream; [x][1:v] merges the scaled video with the generated palette.
             command = [
                 'ffmpeg', '-ss', start_time, '-t', duration, '-i', input_path,
                 '-i', palette, '-filter_complex', f"{filters} [x]; [x][1:v] paletteuse",
-                '-preset', preset, # 🚀 User can change this for speed
+                '-preset', preset, # 🚀 Defines the x264/HEVC compression heuristic effort.
                 '-y', output_path
             ]
             
