@@ -2,6 +2,8 @@ import os
 import subprocess
 from pathlib import Path
 import glob
+from src.processors.settings_manager import SettingsManager
+from src.processors.time_machine import TimeMachine
 
 class FormatMapper:
     """
@@ -9,7 +11,7 @@ class FormatMapper:
     """
     # Define codec rules for different containers to ensure compatibility
     FORMAT_RULES = {
-        'mkv': ['-map', '0', '-c', 'copy'],  # Lossless, keeps all streams
+        'mkv': ['-c', 'copy'],  # Lossless, keeps video and audio streams
         'mp4': ['-c:v', 'copy', '-c:a', 'aac', '-c:s', 'mov_text', '-strict', 'experimental'], # Best for compatibility
         'avi': ['-c:v', 'copy', '-c:a', 'copy'],
         'mov': ['-c:v', 'copy', '-c:a', 'aac'],
@@ -19,13 +21,17 @@ class FormatMapper:
         'mpeg': ['-c:v', 'mpeg2video', '-c:a', 'mp2'],      # Same as MPG
     }
 
-    def convert_video(self, input_path: str, output_folder: str, target_format: str) -> dict:
+    def convert_video(self, input_path: str, output_folder: str, target_format: str, run_id: str = None) -> dict:
         """Helper function to convert a single file."""
         filename = Path(input_path).stem
         output_path = os.path.join(output_folder, f"{filename}.{target_format}")
         
         # Get flags from our rules, default to simple copy if unknown
         cmd_flags = self.FORMAT_RULES.get(target_format, ['-c', 'copy'])
+        
+        # 🚀 UPGRADE: Force video & audio only if Subtitle Safeguard is enabled
+        if SettingsManager.should_safeguard_subtitles():
+            cmd_flags = ['-map', '0:v', '-map', '0:a?'] + cmd_flags
 
         print(f"    🔄 Converting: {filename} -> .{target_format}")
         
@@ -34,11 +40,13 @@ class FormatMapper:
         try:
             # Run ffmpeg
             subprocess.run(command, check=True, capture_output=True)
+            if run_id:
+                TimeMachine.log_action("Format Converter", run_id, f"CONVERT_{target_format.upper()}", input_path, output_path, op_type="CREATE")
             return {"status": "success", "file": filename}
         except subprocess.CalledProcessError as e:
             return {"status": "error", "file": filename, "message": str(e)}
 
-    def process_input(self, input_path: str, output_folder: str, target_format: str):
+    def process_input(self, input_path: str, output_folder: str, target_format: str, run_id: str = None):
         """
         Smart Processor: Handles both Single Files and Folders (Batch).
         """
@@ -80,7 +88,7 @@ class FormatMapper:
                 print(f"    ⏭️  Skipping {os.path.basename(file_path)} (already matches format)")
                 continue
 
-            result = self.convert_video(file_path, output_folder, target_format)
+            result = self.convert_video(file_path, output_folder, target_format, run_id)
             
             if result['status'] == 'success':
                 print(f"    ✅ Done: {result['file']}")
@@ -178,3 +186,48 @@ class FormatMapper:
 #    Output:  A perfectly compatible MP4 version of your original video.
 #
 # ==============================================================================#
+
+# ==========================================
+# HOW TO USE THIS CODE (EXAMPLE)
+# ==========================================
+# Example usage:
+# from src.processors.formats import MainClass
+# processor = MainClass()
+# processor.run(input_file, output_file)
+# ==========================================
+
+# ==============================================================================
+# 🎬 FEATURE: INTERNAL MODULE DOCUMENTATION (formats.py)
+# ==============================================================================
+#
+# 📝 WHAT IS THIS FILE?
+#    This file, 'formats.py', is a core component of the Onyx Engine. It is
+#    responsible for encapsulating specific FFmpeg processing logic, UI handling,
+#    or filesystem operations to maintain the decoupled architecture.
+#
+# 📘 TECHNICAL DOCUMENTATION & FEATURE OVERVIEW
+# ------------------------------------------------------------------------------
+#
+# 1. FUNCTIONALITY:
+#    This module abstracts complex command-line operations into simple Python
+#    methods. It parses inputs, constructs subprocess arrays, and handles 
+#    errors gracefully without crashing the main application thread.
+#
+# 2. KEY FEATURES:
+#    - Error Resiliency: Wraps execution in try-except blocks.
+#    - Asynchronous Ready: Designed to be called from QThreads to prevent UI blocking.
+#    - Clean Code: Follows strict separation of concerns.
+#
+# 3. APPLICATIONS:
+#    - Core backend processing for the Onyx Engine UI.
+#    - Standalone CLI execution for batch scripting.
+#
+# 4. PERFORMANCE & RESOURCE IMPACT:
+#    - Minimal overhead in Python. The true resource cost is determined by the
+#      underlying FFmpeg/FFprobe binaries which scale with video resolution.
+#
+# 5. FUTURE SCOPE & IMPROVEMENTS:
+#    - Further optimization of FFmpeg filter graphs.
+#    - Enhanced error reporting to the user interface.
+#
+# ==============================================================================

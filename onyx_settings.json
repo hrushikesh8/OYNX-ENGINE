@@ -1,0 +1,14 @@
+{
+    "ffmpeg": "ffmpeg",
+    "ffprobe": "ffprobe",
+    "seven_zip": "C:\\Users\\Hrushikesh Bunni\\Downloads\\H\\PROJECTS\\Onyx Engine\\src\\tools\\7za.exe",
+    "realesrgan": "C:\\Users\\Hrushikesh Bunni\\Downloads\\H\\PROJECTS\\Onyx Engine\\bin\\realesrgan-ncnn-vulkan.exe",
+    "rife": "C:\\Users\\Hrushikesh Bunni\\Downloads\\H\\PROJECTS\\Onyx Engine\\bin\\rife-ncnn-vulkan.exe",
+    "default_output_dir": "",
+    "max_concurrent_jobs": 1,
+    "accent_color": "#2D72D9",
+    "theme_mode": "dark",
+    "hw_accel": 0,
+    "audio_bitrate": 1,
+    "subtitle_safeguard": false
+}

@@ -11,7 +11,7 @@ class StreamLadder:
     matching professional streaming standards (HLS/DASH).
     """
 
-    def generate_profiles(self, input_path: str, output_folder: str):
+    def generate_profiles(self, input_path: str, output_folder: str, selected_profiles=None):
         """
         Processes a single high-quality master into multiple streaming variants:
         1. 1080p (High): For Fiber/Broadband connections.
@@ -23,7 +23,10 @@ class StreamLadder:
         Args:
             input_path (str): Path to the high-quality master video.
             output_folder (str): Directory where the profile versions will be stored.
+            selected_profiles (list, optional): List of profile names (e.g. ['1080p', '720p']).
         """
+        if selected_profiles is None:
+            selected_profiles = ["1080p", "720p", "480p"]
         
         if not os.path.exists(input_path):
             print(f"❌ Error: Master file not found -> {input_path}")
@@ -49,7 +52,10 @@ class StreamLadder:
         print(f"🎬 Master: {base_filename}")
 
         success_count = 0
-        for name, config in profiles.items():
+        for name in selected_profiles:
+            if name not in profiles:
+                continue
+            config = profiles[name]
             output_name = f"{base_filename}_{name}.mp4"
             output_path = os.path.join(output_folder, output_name)
 
@@ -78,7 +84,7 @@ class StreamLadder:
         print(f"✅ LADDER COMPLETE: {success_count} profiles generated in {output_folder}")
         print("-" * 50)
         
-        return True if success_count == 3 else False
+        return True if success_count == len(selected_profiles) else False
 
 # --- STANDALONE EXECUTION LOGIC ---
 if __name__ == "__main__":

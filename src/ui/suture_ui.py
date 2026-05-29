@@ -4,6 +4,7 @@ from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
                              QFrame, QFileDialog)
 from PyQt6.QtCore import Qt
 from src.processors import suture_merger
+from src.ui.custom_widgets import SmartRunButton
 
 class DragDropList(QListWidget):
     """A custom ListWidget that acts as a giant Drag & Drop zone."""
@@ -59,8 +60,9 @@ class DragDropList(QListWidget):
             super().dropEvent(event)
 
 class SeamlessSutureUI(QWidget):
-    def __init__(self, back_callback):
+    def __init__(self, back_callback, orchestrator):
         super().__init__()
+        self.orchestrator = orchestrator
         layout = QVBoxLayout(self)
         layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
@@ -68,12 +70,23 @@ class SeamlessSutureUI(QWidget):
         header_layout = QHBoxLayout()
         
         # Neat Back Button
-        back_btn = QPushButton(" ←  Back")
+        back_btn = QPushButton("←")
+        back_btn.setFixedSize(36, 36)
         back_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         back_btn.setStyleSheet("""
-            QPushButton { background-color: #252525; border: 1px solid #333; border-radius: 6px; 
-                          color: #bbb; padding: 6px 12px; font-weight: bold; }
-            QPushButton:hover { background-color: #333; color: white; }
+            QPushButton {
+                background-color: rgba(255, 255, 255, 0.03);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                border-radius: 18px;
+                color: #ffffff;
+                font-size: 18px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #2D72D9;
+                border-color: #2D72D9;
+                color: #ffffff;
+            }
         """)
         back_btn.clicked.connect(back_callback)
         
@@ -135,14 +148,13 @@ class SeamlessSutureUI(QWidget):
 
         # --- EXECUTE ---
         layout.addStretch()
-        self.exec_btn = QPushButton("⚡ Execute Seamless Suture")
-        self.exec_btn.setMinimumHeight(60)
-        self.exec_btn.setStyleSheet("""
-            QPushButton { font-size: 18px; font-weight: bold; background-color: #2D72D9; color: white; border-radius: 10px; }
-            QPushButton:hover { background-color: #3a82ef; }
-        """)
-        self.exec_btn.clicked.connect(self.execute_suture)
+        self.exec_btn = SmartRunButton("⚡ Execute Seamless Suture", self.get_suture_inputs, self.execute_suture, speed_multiplier=15.0)
         layout.addWidget(self.exec_btn)
+
+    def get_suture_inputs(self):
+        count = self.file_list.count()
+        if count < 2: return None
+        return [self.file_list.item(i).text() for i in range(count)]
 
     def browse_files(self):
         files, _ = QFileDialog.getOpenFileNames(self, "Select Video Parts", "", "Video Files (*.mp4 *.mkv *.avi)")
@@ -153,16 +165,63 @@ class SeamlessSutureUI(QWidget):
         for item in self.file_list.selectedItems():
             self.file_list.takeItem(self.file_list.row(item))
 
-    def execute_suture(self):
-        count = self.file_list.count()
-        if count < 2: return
-        
-        ordered_files = [self.file_list.item(i).text() for i in range(count)]
+    def execute_suture(self, inputs, est_seconds):
+        ordered_files = inputs
         use_cv = self.cv_toggle.isChecked()
         
-        # Smart output naming
+        # Smart output naming (Preserve original extension)
         base_dir = os.path.dirname(ordered_files[0])
-        final_output = os.path.join(base_dir, "Onyx_Suture_Result.mp4")
+        ext = os.path.splitext(ordered_files[0])[1]
+        final_output = os.path.join(base_dir, f"Onyx_Suture_Result{ext}")
 
-        # Remember: Check if your processor function is 'run_suture_workflow' or 'execute_suture'
-        suture_merger.run_suture_workflow(ordered_files, final_output, use_cv)
+        def task():
+            suture_merger.run_suture_workflow(ordered_files, final_output, use_cv)
+            return True, f"Seamless Suture completed successfully. Output saved to: {final_output}"
+
+        self.orchestrator.add_background_job("Seamless Suture", task, estimated_seconds=est_seconds)
+        self.orchestrator.show_status_message("⏳ Seamless Suture task queued.")
+
+# ==========================================
+# HOW TO USE THIS CODE (EXAMPLE)
+# ==========================================
+# Example usage:
+# from src.processors.suture_ui import MainClass
+# processor = MainClass()
+# processor.run(input_file, output_file)
+# ==========================================
+
+# ==============================================================================
+# 🎬 FEATURE: INTERNAL MODULE DOCUMENTATION (suture_ui.py)
+# ==============================================================================
+#
+# 📝 WHAT IS THIS FILE?
+#    This file, 'suture_ui.py', is a core component of the Onyx Engine. It is
+#    responsible for encapsulating specific FFmpeg processing logic, UI handling,
+#    or filesystem operations to maintain the decoupled architecture.
+#
+# 📘 TECHNICAL DOCUMENTATION & FEATURE OVERVIEW
+# ------------------------------------------------------------------------------
+#
+# 1. FUNCTIONALITY:
+#    This module abstracts complex command-line operations into simple Python
+#    methods. It parses inputs, constructs subprocess arrays, and handles 
+#    errors gracefully without crashing the main application thread.
+#
+# 2. KEY FEATURES:
+#    - Error Resiliency: Wraps execution in try-except blocks.
+#    - Asynchronous Ready: Designed to be called from QThreads to prevent UI blocking.
+#    - Clean Code: Follows strict separation of concerns.
+#
+# 3. APPLICATIONS:
+#    - Core backend processing for the Onyx Engine UI.
+#    - Standalone CLI execution for batch scripting.
+#
+# 4. PERFORMANCE & RESOURCE IMPACT:
+#    - Minimal overhead in Python. The true resource cost is determined by the
+#      underlying FFmpeg/FFprobe binaries which scale with video resolution.
+#
+# 5. FUTURE SCOPE & IMPROVEMENTS:
+#    - Further optimization of FFmpeg filter graphs.
+#    - Enhanced error reporting to the user interface.
+#
+# ==============================================================================

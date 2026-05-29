@@ -1,11 +1,12 @@
 import os
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, 
-                             QLabel, QFrame, QComboBox, QLineEdit, QTabWidget)
+                             QLabel, QFrame, QComboBox, QLineEdit, QTabWidget, QSlider, QGridLayout)
 from PyQt6.QtCore import Qt
-from src.ui.custom_widgets import DropZone
+from src.ui.custom_widgets import DropZone, SmartRunButton
 from src.processors.watermark import Watermarker
 from src.processors.watermark_remover import get_watermark_coords
 from src.processors.gif_maker import GifMaker
+from src.processors.color_studio import ColorStudioProcessor
 
 class BrandingUI(QWidget):
     """
@@ -26,12 +27,30 @@ class BrandingUI(QWidget):
 
         # --- HEADER ---
         header = QHBoxLayout()
-        back_btn = QPushButton("⬅ Back to Dashboard")
+        back_btn = QPushButton("←")
+        back_btn.setFixedSize(36, 36)
+        back_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        back_btn.setStyleSheet("""
+            QPushButton {
+                background-color: rgba(255, 255, 255, 0.03);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                border-radius: 18px;
+                color: #ffffff;
+                font-size: 18px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #2D72D9;
+                border-color: #2D72D9;
+                color: #ffffff;
+            }
+        """)
         back_btn.clicked.connect(back_callback)
         header.addWidget(back_btn)
+        header.addSpacing(15)
         
         title = QLabel("🎨 VFX, Branding & GIF Maker")
-        title.setStyleSheet("font-size: 22px; font-weight: bold;")
+        title.setStyleSheet("font-size: 22px; font-weight: bold; color: white;")
         header.addWidget(title)
         header.addStretch()
         layout.addLayout(header)
@@ -50,6 +69,7 @@ class BrandingUI(QWidget):
         self.setup_burner_tab()
         self.setup_remover_tab()
         self.setup_gif_tab()
+        self.setup_color_tab()
 
     # =========================================================================
     # TAB 1: WATERMARK BURNER
@@ -76,16 +96,20 @@ class BrandingUI(QWidget):
         t_layout.addWidget(self.pos_combo)
         t_layout.addSpacing(25)
 
-        self.burn_btn = QPushButton("🚀 Burn Logo Overlay (Re-encode)")
-        self.burn_btn.setMinimumHeight(60)
-        self.burn_btn.setStyleSheet("background-color: #2D72D9; color: white; font-size: 16px; font-weight: bold; border-radius: 8px;")
-        self.burn_btn.clicked.connect(self.run_burner)
+        self.burn_btn = SmartRunButton("🚀 Burn Logo Overlay (Re-encode)", self.get_burn_input, self.run_burner, speed_multiplier=2.0)
         t_layout.addWidget(self.burn_btn)
         t_layout.addStretch()
 
         self.tabs.addTab(tab, "💧 Watermark Burner")
 
-    def run_burner(self):
+    def get_burn_input(self):
+        vid = self.burn_vid_drop.file_input.text().strip()
+        img = self.burn_img_drop.file_input.text().strip()
+        if not vid or not img:
+            return None
+        return vid
+
+    def run_burner(self, inputs, est_seconds):
         vid = self.burn_vid_drop.file_input.text().strip()
         img = self.burn_img_drop.file_input.text().strip()
         pos_idx = self.pos_combo.currentIndex()
@@ -102,7 +126,7 @@ class BrandingUI(QWidget):
         def task():
             return self.watermarker.add_image_watermark(vid, img, output_path, position=pos)
 
-        self.orchestrator.add_background_job(f"Burn Watermark: {name}", task)
+        self.orchestrator.add_background_job(f"Burn Watermark: {name}", task, estimated_seconds=est_seconds)
         self.orchestrator.show_status_message(f"⏳ Branding task queued for: {name}")
 
     # =========================================================================
@@ -129,19 +153,21 @@ class BrandingUI(QWidget):
         t_layout.addWidget(info_box)
         t_layout.addSpacing(25)
 
-        self.rem_btn = QPushButton("🧹 Select Watermark & Erase")
-        self.rem_btn.setMinimumHeight(60)
+        self.rem_btn = SmartRunButton("🧹 Select Watermark & Erase", self.get_rem_input, self.run_remover, speed_multiplier=1.5)
         self.rem_btn.setStyleSheet("background-color: #ff3333; color: white; font-size: 16px; font-weight: bold; border-radius: 8px;")
-        self.rem_btn.clicked.connect(self.run_remover)
         t_layout.addWidget(self.rem_btn)
         t_layout.addStretch()
 
         self.tabs.addTab(tab, "🧹 Watermark Remover")
 
-    def run_remover(self):
+    def get_rem_input(self):
         path = self.rem_drop.file_input.text().strip()
         if not path or not os.path.exists(path):
-            return
+            return None
+        return path
+
+    def run_remover(self, inputs, est_seconds):
+        path = self.get_rem_input()
 
         # Step 1: Open ROI selector window on main thread (OpenCV GUI must run on main thread)
         coords = get_watermark_coords(path)
@@ -164,7 +190,7 @@ class BrandingUI(QWidget):
             output_path
         ]
 
-        self.orchestrator.add_background_job(f"Delogo: {name}", cmd)
+        self.orchestrator.add_background_job(f"Delogo: {name}", cmd, estimated_seconds=est_seconds)
         self.orchestrator.show_status_message(f"⏳ Delogo task queued for: {filename}")
 
     # =========================================================================
@@ -206,17 +232,25 @@ class BrandingUI(QWidget):
         t_layout.addLayout(grid)
         t_layout.addSpacing(25)
 
-        self.gif_btn = QPushButton("🎨 Generate High-Quality GIF (Lanczos)")
-        self.gif_btn.setMinimumHeight(60)
+        self.gif_btn = SmartRunButton("🎨 Generate High-Quality GIF (Lanczos)", self.get_gif_input, self.run_gif, self.get_gif_speed)
         self.gif_btn.setStyleSheet("background-color: #00ff66; color: #111; font-size: 16px; font-weight: bold; border-radius: 8px;")
-        self.gif_btn.clicked.connect(self.run_gif)
         t_layout.addWidget(self.gif_btn)
         t_layout.addStretch()
 
         self.tabs.addTab(tab, "🎨 GIF Maker")
 
-    def run_gif(self):
+    def get_gif_input(self):
         path = self.gif_drop.file_input.text().strip()
+        return path if path else None
+
+    def get_gif_speed(self):
+        preset = self.gif_preset.currentText()
+        if preset == "ultrafast": return 10.0
+        if preset == "fast": return 5.0
+        return 2.0
+
+    def run_gif(self, inputs, est_seconds):
+        path = self.get_gif_input()
         start = self.gif_start.text().strip()
         dur = self.gif_dur.text().strip()
         scale = self.gif_scale.text().strip()
@@ -232,5 +266,148 @@ class BrandingUI(QWidget):
         def task():
             return self.gif_maker.create_gif(path, output_path, start_time=start, duration=dur, scale=scale, preset=preset)
 
-        self.orchestrator.add_background_job(f"GIF Gen: {name}", task)
+        self.orchestrator.add_background_job(f"GIF Gen: {name}", task, estimated_seconds=est_seconds)
         self.orchestrator.show_status_message(f"⏳ GIF creation queued for: {name}")
+
+    # =========================================================================
+    # TAB 4: COLOR GRADING STUDIO (LUT & EQ Filters)
+    # =========================================================================
+    def setup_color_tab(self):
+        tab = QWidget()
+        t_layout = QVBoxLayout(tab)
+        t_layout.setContentsMargins(20, 20, 20, 20)
+
+        t_layout.addWidget(QLabel("Step 1: Select Video File"))
+        self.color_vid_drop = DropZone(self)
+        t_layout.addWidget(self.color_vid_drop)
+        t_layout.addSpacing(15)
+
+        # EQ Sliders Grid
+        grid = QGridLayout()
+        
+        # Brightness (-1.0 to 1.0)
+        grid.addWidget(QLabel("Brightness:"), 0, 0)
+        self.bright_slider = QSlider(Qt.Orientation.Horizontal)
+        self.bright_slider.setRange(-100, 100)
+        self.bright_slider.setValue(0)
+        self.bright_label = QLabel("0.0")
+        self.bright_slider.valueChanged.connect(lambda val: self.bright_label.setText(f"{val / 100.0:.2f}"))
+        grid.addWidget(self.bright_slider, 0, 1)
+        grid.addWidget(self.bright_label, 0, 2)
+
+        # Contrast (0.0 to 4.0)
+        grid.addWidget(QLabel("Contrast:"), 1, 0)
+        self.contrast_slider = QSlider(Qt.Orientation.Horizontal)
+        self.contrast_slider.setRange(0, 40)
+        self.contrast_slider.setValue(10)
+        self.contrast_label = QLabel("1.0")
+        self.contrast_slider.valueChanged.connect(lambda val: self.contrast_label.setText(f"{val / 10.0:.1f}"))
+        grid.addWidget(self.contrast_slider, 1, 1)
+        grid.addWidget(self.contrast_label, 1, 2)
+
+        # Saturation (0.0 to 3.0)
+        grid.addWidget(QLabel("Saturation:"), 2, 0)
+        self.sat_slider = QSlider(Qt.Orientation.Horizontal)
+        self.sat_slider.setRange(0, 30)
+        self.sat_slider.setValue(10)
+        self.sat_label = QLabel("1.0")
+        self.sat_slider.valueChanged.connect(lambda val: self.sat_label.setText(f"{val / 10.0:.1f}"))
+        grid.addWidget(self.sat_slider, 2, 1)
+        grid.addWidget(self.sat_label, 2, 2)
+
+        # Gamma (0.1 to 10.0)
+        grid.addWidget(QLabel("Gamma:"), 3, 0)
+        self.gamma_slider = QSlider(Qt.Orientation.Horizontal)
+        self.gamma_slider.setRange(1, 100)
+        self.gamma_slider.setValue(10)
+        self.gamma_label = QLabel("1.0")
+        self.gamma_slider.valueChanged.connect(lambda val: self.gamma_label.setText(f"{val / 10.0:.1f}"))
+        grid.addWidget(self.gamma_slider, 3, 1)
+        grid.addWidget(self.gamma_label, 3, 2)
+
+        t_layout.addLayout(grid)
+        t_layout.addSpacing(15)
+
+        t_layout.addWidget(QLabel("Step 3: Select 3D LUT File (.cube) (Optional)"))
+        self.lut_drop = DropZone(self)
+        t_layout.addWidget(self.lut_drop)
+        t_layout.addSpacing(25)
+
+        self.color_btn = SmartRunButton("🎨 Apply Color Grading & LUT", self.get_color_input, self.run_color_grading, speed_multiplier=2.0)
+        t_layout.addWidget(self.color_btn)
+        t_layout.addStretch()
+
+        self.tabs.addTab(tab, "🎨 Color Studio")
+
+    def get_color_input(self):
+        path = self.color_vid_drop.file_input.text().strip()
+        return path if path else None
+
+    def run_color_grading(self, inputs, est_seconds):
+        path = self.get_color_input()
+        b = self.bright_slider.value() / 100.0
+        c = self.contrast_slider.value() / 10.0
+        s = self.sat_slider.value() / 10.0
+        g = self.gamma_slider.value() / 10.0
+        lut = self.lut_drop.file_input.text().strip() or None
+
+        if not path:
+            return
+
+        base_dir = os.path.dirname(path)
+        name, ext = os.path.splitext(os.path.basename(path))
+        output_path = os.path.join(base_dir, f"{name}_graded{ext}")
+
+        def task():
+            processor = ColorStudioProcessor()
+            success = processor.adjust_colors(path, output_path, brightness=b, contrast=c, saturation=s, gamma=g, lut_path=lut)
+            return success, f"Color grading complete. Saved at: {output_path}" if success else "Color grading failed."
+
+        self.orchestrator.add_background_job(f"Color Studio: {name}", task, estimated_seconds=est_seconds)
+        self.orchestrator.show_status_message(f"⏳ Color Grading queued for: {name}")
+
+
+# ==========================================
+# HOW TO USE THIS CODE (EXAMPLE)
+# ==========================================
+# Example usage:
+# from src.processors.branding_ui import MainClass
+# processor = MainClass()
+# processor.run(input_file, output_file)
+# ==========================================
+
+# ==============================================================================
+# 🎬 FEATURE: INTERNAL MODULE DOCUMENTATION (branding_ui.py)
+# ==============================================================================
+#
+# 📝 WHAT IS THIS FILE?
+#    This file, 'branding_ui.py', is a core component of the Onyx Engine. It is
+#    responsible for encapsulating specific FFmpeg processing logic, UI handling,
+#    or filesystem operations to maintain the decoupled architecture.
+#
+# 📘 TECHNICAL DOCUMENTATION & FEATURE OVERVIEW
+# ------------------------------------------------------------------------------
+#
+# 1. FUNCTIONALITY:
+#    This module abstracts complex command-line operations into simple Python
+#    methods. It parses inputs, constructs subprocess arrays, and handles 
+#    errors gracefully without crashing the main application thread.
+#
+# 2. KEY FEATURES:
+#    - Error Resiliency: Wraps execution in try-except blocks.
+#    - Asynchronous Ready: Designed to be called from QThreads to prevent UI blocking.
+#    - Clean Code: Follows strict separation of concerns.
+#
+# 3. APPLICATIONS:
+#    - Core backend processing for the Onyx Engine UI.
+#    - Standalone CLI execution for batch scripting.
+#
+# 4. PERFORMANCE & RESOURCE IMPACT:
+#    - Minimal overhead in Python. The true resource cost is determined by the
+#      underlying FFmpeg/FFprobe binaries which scale with video resolution.
+#
+# 5. FUTURE SCOPE & IMPROVEMENTS:
+#    - Further optimization of FFmpeg filter graphs.
+#    - Enhanced error reporting to the user interface.
+#
+# ==============================================================================

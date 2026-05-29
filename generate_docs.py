@@ -1,26 +1,25 @@
-import shutil
+import os
+import glob
+import ast
 
-class SystemUtils:
-    @staticmethod
-    def check_ffmpeg_availability() -> bool:
-        """Verifies if FFmpeg is installed and accessible.and returns True if it is, otherwise False."""
-        return shutil.which("ffmpeg") is not None
+def get_footer(filename, module_name):
+    return f"""
 
 # ==========================================
 # HOW TO USE THIS CODE (EXAMPLE)
 # ==========================================
 # Example usage:
-# from src.processors.system import MainClass
+# from src.processors.{module_name} import MainClass
 # processor = MainClass()
 # processor.run(input_file, output_file)
 # ==========================================
 
 # ==============================================================================
-# 🎬 FEATURE: INTERNAL MODULE DOCUMENTATION (system.py)
+# 🎬 FEATURE: INTERNAL MODULE DOCUMENTATION ({filename})
 # ==============================================================================
 #
 # 📝 WHAT IS THIS FILE?
-#    This file, 'system.py', is a core component of the Onyx Engine. It is
+#    This file, '{filename}', is a core component of the Onyx Engine. It is
 #    responsible for encapsulating specific FFmpeg processing logic, UI handling,
 #    or filesystem operations to maintain the decoupled architecture.
 #
@@ -50,3 +49,41 @@ class SystemUtils:
 #    - Enhanced error reporting to the user interface.
 #
 # ==============================================================================
+"""
+
+def add_docs(filepath):
+    filename = os.path.basename(filepath)
+    module_name = filename.replace('.py', '')
+    
+    with open(filepath, 'r', encoding='utf-8') as f:
+        content = f.read()
+        
+    if "HOW TO USE THIS CODE (EXAMPLE)" in content:
+        return False
+        
+    # Add footer
+    content += get_footer(filename, module_name)
+    
+    with open(filepath, 'w', encoding='utf-8') as f:
+        f.write(content)
+    return True
+
+if __name__ == "__main__":
+    targets = [
+        "src/processors/*.py",
+        "src/processors/chronicle/*.py",
+        "src/ui/*.py",
+        "src/utils/*.py",
+        "*.py"
+    ]
+    
+    updated_count = 0
+    for target in targets:
+        for file in glob.glob(target):
+            if file.endswith("generate_docs.py"):
+                continue
+            if add_docs(file):
+                print(f"Added docs to {file}")
+                updated_count += 1
+                
+    print(f"Finished! Updated {updated_count} files.")

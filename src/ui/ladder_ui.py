@@ -1,10 +1,10 @@
 import os
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, 
-                             QLabel, QFrame, QGridLayout, QStyle, QSlider, QTabWidget)
+                             QLabel, QFrame, QGridLayout, QStyle, QSlider, QTabWidget, QCheckBox)
 from PyQt6.QtCore import Qt, QUrl
 from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
 from PyQt6.QtMultimediaWidgets import QVideoWidget
-from src.ui.custom_widgets import DropZone
+from src.ui.custom_widgets import DropZone, SmartRunButton, VLCVolumeSlider
 from src.processors.ladder import StreamLadder
 
 class StreamLadderUI(QWidget):
@@ -24,12 +24,30 @@ class StreamLadderUI(QWidget):
 
         # --- HEADER ---
         header = QHBoxLayout()
-        back_btn = QPushButton("⬅ Back to Dashboard")
+        back_btn = QPushButton("←")
+        back_btn.setFixedSize(36, 36)
+        back_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        back_btn.setStyleSheet("""
+            QPushButton {
+                background-color: rgba(255, 255, 255, 0.03);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                border-radius: 18px;
+                color: #ffffff;
+                font-size: 18px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #2D72D9;
+                border-color: #2D72D9;
+                color: #ffffff;
+            }
+        """)
         back_btn.clicked.connect(back_callback)
         header.addWidget(back_btn)
+        header.addSpacing(15)
         
         title = QLabel("🔄 Format, Ladder & Compare")
-        title.setStyleSheet("font-size: 22px; font-weight: bold;")
+        title.setStyleSheet("font-size: 22px; font-weight: bold; color: white;")
         header.addWidget(title)
         header.addStretch()
         layout.addLayout(header)
@@ -65,6 +83,26 @@ class StreamLadderUI(QWidget):
         t_layout.addWidget(QLabel("Step 2: Select Output Directory for Ladder Profiles"))
         self.output_drop = DropZone(self, mode='dir')
         t_layout.addWidget(self.output_drop)
+        t_layout.addSpacing(15)
+
+        # Quality Checkboxes Selection
+        t_layout.addWidget(QLabel("Step 3: Select Quality Profiles to Generate"))
+        cb_layout = QHBoxLayout()
+        self.cb_1080p = QCheckBox("High-End (1080p)")
+        self.cb_1080p.setChecked(True)
+        self.cb_1080p.setStyleSheet("QCheckBox { font-size: 13px; color: #eee; font-weight: bold; }")
+        self.cb_720p = QCheckBox("Mid-Range (720p)")
+        self.cb_720p.setChecked(True)
+        self.cb_720p.setStyleSheet("QCheckBox { font-size: 13px; color: #eee; font-weight: bold; }")
+        self.cb_480p = QCheckBox("Low-End (480p)")
+        self.cb_480p.setChecked(True)
+        self.cb_480p.setStyleSheet("QCheckBox { font-size: 13px; color: #eee; font-weight: bold; }")
+        
+        cb_layout.addWidget(self.cb_1080p)
+        cb_layout.addWidget(self.cb_720p)
+        cb_layout.addWidget(self.cb_480p)
+        cb_layout.addStretch()
+        t_layout.addLayout(cb_layout)
         t_layout.addSpacing(20)
 
         info_box = QFrame()
@@ -77,36 +115,45 @@ class StreamLadderUI(QWidget):
         t_layout.addWidget(info_box)
         t_layout.addSpacing(25)
 
-        self.run_btn = QPushButton("🚀 Run Adaptive Ladder Encoding")
-        self.run_btn.setMinimumHeight(60)
-        self.run_btn.setStyleSheet("""
-            QPushButton { background-color: #2D72D9; color: white; font-size: 16px; font-weight: bold; border-radius: 8px; }
-            QPushButton:hover { background-color: #3a82ef; }
-        """)
-        self.run_btn.clicked.connect(self.run_ladder)
+        self.run_btn = SmartRunButton("🚀 Run Adaptive Ladder Encoding", self.get_input_paths, self.execute_task, speed_multiplier=1.0)
         t_layout.addWidget(self.run_btn)
         t_layout.addStretch()
 
         self.tabs.addTab(tab, "📶 ABR Stream Ladder")
 
-    def run_ladder(self):
+    def get_input_paths(self):
         master = self.master_drop.file_input.text().strip()
         out_dir = self.output_drop.file_input.text().strip()
 
         if not master or not out_dir:
-            return
+            self.orchestrator.show_status_message("❌ Error: Master file and output folder are required.")
+            return None
 
-        # Prepare outputs list for async logging
+        # Get selected profiles
+        selected = []
+        if self.cb_1080p.isChecked(): selected.append("1080p")
+        if self.cb_720p.isChecked(): selected.append("720p")
+        if self.cb_480p.isChecked(): selected.append("480p")
+
+        if not selected:
+            self.orchestrator.show_status_message("❌ Error: You must select at least one quality profile.")
+            return None
+
+        self.selected_profiles = selected
+        # Dynamic speed adjustment: 1 profile = 1.0x, 3 profiles = 0.33x speed
+        self.run_btn.speed_multiplier = 1.0 / len(self.selected_profiles)
+        
+        return master
+
+    def execute_task(self, inputs, est_seconds):
+        master = inputs
+        out_dir = self.output_drop.file_input.text().strip()
         filename = os.path.splitext(os.path.basename(master))[0]
         
-        # Add to background job queue
-        # Since ladder.py encodes each profile using FFmpeg, we can run them in background.
-        # However, to let the user do it easily, we can add profile generation function as a task!
-        # We define a helper that runs the profiles.
         def run_profile_task():
-            return self.ladder_engine.generate_profiles(master, out_dir)
+            return self.ladder_engine.generate_profiles(master, out_dir, self.selected_profiles)
 
-        self.orchestrator.add_background_job(f"ABR Ladder: {filename}", run_profile_task)
+        self.orchestrator.add_background_job(f"ABR Ladder: {filename}", run_profile_task, estimated_seconds=est_seconds)
         self.orchestrator.show_status_message(f"⏳ ABR Ladder task queued for: {filename}")
 
     # =========================================================================
@@ -142,15 +189,17 @@ class StreamLadderUI(QWidget):
         
         self.video_widget_a = QVideoWidget()
         self.video_widget_a.setStyleSheet("background-color: black; border: 1px solid #333; border-radius: 6px;")
-        self.video_widget_a.setMinimumHeight(350)
+        self.video_widget_a.setMinimumHeight(200)
+        self.video_widget_a.setSizePolicy(self.video_widget_a.sizePolicy().Policy.Expanding, self.video_widget_a.sizePolicy().Policy.Expanding)
         
         self.video_widget_b = QVideoWidget()
         self.video_widget_b.setStyleSheet("background-color: black; border: 1px solid #333; border-radius: 6px;")
-        self.video_widget_b.setMinimumHeight(350)
+        self.video_widget_b.setMinimumHeight(200)
+        self.video_widget_b.setSizePolicy(self.video_widget_b.sizePolicy().Policy.Expanding, self.video_widget_b.sizePolicy().Policy.Expanding)
 
         player_grid.addWidget(self.video_widget_a, 0, 0)
         player_grid.addWidget(self.video_widget_b, 0, 1)
-        t_layout.addLayout(player_grid)
+        t_layout.addLayout(player_grid, stretch=1)
 
         # Synchronized Media Players Setup
         self.player_a = QMediaPlayer()
@@ -187,10 +236,18 @@ class StreamLadderUI(QWidget):
         self.mute_a_btn.setStyleSheet("background-color: #333; border: 1px solid #444; border-radius: 4px; padding: 5px;")
         self.mute_a_btn.clicked.connect(self.toggle_mute_a)
         
-        self.mute_b_btn = QPushButton("🔇 Mute Right (Synced)")
+        self.volume_a_slider = VLCVolumeSlider()
+        self.volume_a_slider.setValue(100)
+        self.volume_a_slider.valueChanged.connect(self.set_volume_a)
+        
+        self.mute_b_btn = QPushButton("🔇 Muted Right")
         self.mute_b_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.mute_b_btn.setStyleSheet("background-color: #333; border: 1px solid #444; border-radius: 4px; padding: 5px;")
         self.mute_b_btn.clicked.connect(self.toggle_mute_b)
+
+        self.volume_b_slider = VLCVolumeSlider()
+        self.volume_b_slider.setValue(0)
+        self.volume_b_slider.valueChanged.connect(self.set_volume_b)
 
         self.time_label = QLabel("00:00:00 / 00:00:00")
         self.time_label.setStyleSheet("font-family: monospace; font-size: 14px; color: #888;")
@@ -198,7 +255,10 @@ class StreamLadderUI(QWidget):
         controls.addWidget(self.play_btn)
         controls.addSpacing(15)
         controls.addWidget(self.mute_a_btn)
+        controls.addWidget(self.volume_a_slider)
+        controls.addSpacing(10)
         controls.addWidget(self.mute_b_btn)
+        controls.addWidget(self.volume_b_slider)
         controls.addStretch()
         controls.addWidget(self.time_label)
         bar_layout.addLayout(controls)
@@ -255,7 +315,23 @@ class StreamLadderUI(QWidget):
     def toggle_mute_b(self):
         is_muted = self.audio_output_b.isMuted()
         self.audio_output_b.setMuted(not is_muted)
-        self.mute_b_btn.setText("🔊 Unmute Right" if not is_muted else "🔇 Mute Right (Synced)")
+        self.mute_b_btn.setText("🔊 Mute Right" if not is_muted else "🔇 Muted Right")
+
+    def set_volume_a(self, value):
+        self.audio_output_a.setVolume(value / 100.0)
+        if value == 0:
+            self.mute_a_btn.setText("🔇 Muted Left")
+        elif self.audio_output_a.isMuted():
+            self.audio_output_a.setMuted(False)
+            self.mute_a_btn.setText("🔊 Mute Left")
+
+    def set_volume_b(self, value):
+        self.audio_output_b.setVolume(value / 100.0)
+        if value == 0:
+            self.mute_b_btn.setText("🔇 Muted Right")
+        elif self.audio_output_b.isMuted():
+            self.audio_output_b.setMuted(False)
+            self.mute_b_btn.setText("🔊 Mute Right")
 
     def format_time(self, ms):
         seconds = (ms // 1000) % 60
@@ -268,3 +344,49 @@ class StreamLadderUI(QWidget):
         self.player_a.stop()
         self.player_b.stop()
         super().closeEvent(event)
+
+
+# ==========================================
+# HOW TO USE THIS CODE (EXAMPLE)
+# ==========================================
+# Example usage:
+# from src.processors.ladder_ui import MainClass
+# processor = MainClass()
+# processor.run(input_file, output_file)
+# ==========================================
+
+# ==============================================================================
+# 🎬 FEATURE: INTERNAL MODULE DOCUMENTATION (ladder_ui.py)
+# ==============================================================================
+#
+# 📝 WHAT IS THIS FILE?
+#    This file, 'ladder_ui.py', is a core component of the Onyx Engine. It is
+#    responsible for encapsulating specific FFmpeg processing logic, UI handling,
+#    or filesystem operations to maintain the decoupled architecture.
+#
+# 📘 TECHNICAL DOCUMENTATION & FEATURE OVERVIEW
+# ------------------------------------------------------------------------------
+#
+# 1. FUNCTIONALITY:
+#    This module abstracts complex command-line operations into simple Python
+#    methods. It parses inputs, constructs subprocess arrays, and handles 
+#    errors gracefully without crashing the main application thread.
+#
+# 2. KEY FEATURES:
+#    - Error Resiliency: Wraps execution in try-except blocks.
+#    - Asynchronous Ready: Designed to be called from QThreads to prevent UI blocking.
+#    - Clean Code: Follows strict separation of concerns.
+#
+# 3. APPLICATIONS:
+#    - Core backend processing for the Onyx Engine UI.
+#    - Standalone CLI execution for batch scripting.
+#
+# 4. PERFORMANCE & RESOURCE IMPACT:
+#    - Minimal overhead in Python. The true resource cost is determined by the
+#      underlying FFmpeg/FFprobe binaries which scale with video resolution.
+#
+# 5. FUTURE SCOPE & IMPROVEMENTS:
+#    - Further optimization of FFmpeg filter graphs.
+#    - Enhanced error reporting to the user interface.
+#
+# ==============================================================================

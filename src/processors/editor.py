@@ -2,9 +2,12 @@ import subprocess
 import os
 import sys
 import math
+import glob
+from src.processors.settings_manager import SettingsManager
+from src.processors.time_machine import TimeMachine
 
 class VideoEditor:
-    def convert_to_shorts_style(self, input_path: str, output_path: str):
+    def convert_to_shorts_style(self, input_path: str, output_path: str, run_id: str = None):
         """Converts Landscape to Vertical (9:16) with blur background."""
         # --- ORIGINAL FILTER LOGIC (DO NOT MODIFY) ---
         # This creates the professional "Shorts" look:
@@ -14,13 +17,14 @@ class VideoEditor:
         filter_cmd = (
             "split[a][b];"
             "[a]scale=1080:1920:force_original_aspect_ratio=increase,boxblur=20:20[bg];"
-            "[b]scale=1080:-1[fg];"
+            "[b]scale=1080:-2[fg];"
             "[bg][fg]overlay=(W-w)/2:(H-h)/2"
         )
+        encoder = SettingsManager.get_video_encoder("libx264")
         command = [
             'ffmpeg', '-i', input_path,
             '-vf', filter_cmd,
-            '-c:v', 'libx264', '-preset', 'fast', '-crf', '23',
+            '-c:v', encoder, '-preset', 'fast', '-crf', '23',
             '-c:a', 'copy', 
             '-avoid_negative_ts', 'make_zero', # 🚀 UPGRADE: Ensures seamless sync
             '-y', output_path
@@ -28,12 +32,14 @@ class VideoEditor:
         try:
             print("⏳ VidFlow Editor: Processing Shorts conversion (this may take time)...")
             subprocess.run(command, check=True, capture_output=True)
+            if run_id:
+                TimeMachine.log_action("Shorts Editor", run_id, "CREATE_SHORTS", input_path, output_path, op_type="CREATE")
             return True
         except subprocess.CalledProcessError as e:
             print(f"❌ Error: {e.stderr.decode()}")
             return False
 
-    def split_by_time(self, input_path: str, segment_time: int):
+    def split_by_time(self, input_path: str, segment_time: int, run_id: str = None):
         """Splits video into multiple chunks by seconds."""
         # --- ORIGINAL NAMING LOGIC ---
         filename = os.path.splitext(os.path.basename(input_path))[0]
@@ -42,7 +48,7 @@ class VideoEditor:
         
         command = [
             'ffmpeg', '-i', input_path, 
-            '-map', '0',                       # ✅ Keep all tracks
+            '-map', '0:v', '-map', '0:a?',
             '-c', 'copy', '-f', 'segment',
             '-segment_time', str(segment_time), 
             '-reset_timestamps', '1',
@@ -52,6 +58,12 @@ class VideoEditor:
         try:
             print(f"✂️  VidFlow Editor: Splitting into {segment_time}s segments...")
             subprocess.run(command, check=True, capture_output=True)
+            
+            if run_id:
+                search_pattern = os.path.join(os.path.dirname(input_path), f"{filename}_part*.mp4")
+                for generated_file in glob.glob(search_pattern):
+                    TimeMachine.log_action("Shorts Editor", run_id, "SPLIT_CHUNK", input_path, generated_file, op_type="CREATE")
+                    
             return True
         except subprocess.CalledProcessError:
             return False

@@ -1,114 +1,97 @@
-# 🎬 VidFlow Engine
+# 🎬 Onyx Engine (formerly VidFlow)
 
-**VidFlow** is a comprehensive video engineering microservice designed to automate and simplify complex media workflows. It serves as a bridge between raw command-line tools and professional editing software, enabling you to remaster legacy footage, create social media shorts, rip audiophile-quality audio, and manage subtitles—all through a single, intuitive interface.
+**Onyx Engine** is an advanced, comprehensive video engineering application and microservice designed to automate, simplify, and elevate complex media workflows. Featuring a fully integrated **PyQt6 graphical interface**, it serves as a bridge between raw FFmpeg processing power and professional non-linear editing. 
+
+Whether you need to remaster legacy footage, create highly-produced social media shorts, seamlessly stitch video clips, perform color grading, or manage complex multi-track timelines, Onyx Engine handles it all through an intuitive, premium dark-mode interface.
 
 ---
 
-## 📂 The Core Processors
+## ✨ Comprehensive Feature Breakdown
 
-Located in `src/processors/`, these modules are the engine's powerhouse. Each operates independently:
+### 1. The Core NLE Suite
+The backbone of Onyx Engine revolves around giving you precise, non-linear control over your media without the bloat of traditional editors.
+* **Multi-Track Timeline Composer (Major Update):** A full-fledged non-linear editing interface. Mix multiple video clips and audio tracks, apply custom scaling (16:9, 9:16, 1:1), color grade on the fly, set precise trim in/out points, and adjust speeds for cinematic slow-motion or hyper-lapses.
+* **Stream Ladder:** A high-end broadcast tool for combining clips side-by-side or stacking multiple clips into a single video file dynamically. Features independent, VLC-style UI volume wedges for each stream and granular mute controls.
+* **Seamless Suture:** Perfect for compiling highlight reels. Add unlimited clips to a drag-and-drop list and have the engine multiplex them together seamlessly with unified background audio tracks.
+* **Precision Division (Scene Sniper):** Structurally edit and split massive video files into exact chunks (e.g., 30 seconds for WhatsApp statuses) or slice media exactly in half. Now features a live preview QMediaPlayer!
 
-* **`editor.py`**
-    Handles visual transformations, specifically converting horizontal videos into vertical Shorts (9:16) with dynamic background blurring for platforms like TikTok and Reels.
+### 2. The Social Media Engine
+Designed for content creators and marketers who need rapid deployment across TikTok, Reels, and YouTube Shorts.
+* **Intelligent Auto-Shorts Editor:** Automatically convert horizontal (landscape) videos into vertical (portrait) 9:16 formats. The engine dynamically creates an aesthetically pleasing blurred background using the original footage, ensuring no black bars are visible.
+* **HD GIF Maker:** Generate crystal-clear, high-definition GIFs using a robust 2-pass palette generation algorithm, ensuring accurate colors and smooth, low-filesize playback.
+* **Watermark Injection & Branding:** Burn branding, logo images, or text overlays directly onto your video at any specified position with custom opacity controls.
 
-* **`division.py`**
-    Manages structural edits, allowing you to split long videos into 30-second chunks (Status Mode) or cut movies exactly in half at a specific timestamp (Intermission Mode).
+### 3. Media Logistics & AI Management
+Stop organizing your downloaded shows by hand. Let the engine do the heavy lifting.
+* **Chronicle Organizer (NEW):** A massive AI-driven media logistics engine. Point it at a messy download folder, and it connects to the TMDB API to scrape metadata, automatically sort episodes, rename them to Plex/Jellyfin standards, and intelligently structure entire messy libraries of movies and TV shows.
+* **Automated Subtitle Merger:** Automatically scans directories to find and embed matching `.srt` subtitle files into their corresponding video containers.
+* **Track Management (Multiplexer):** Surgical control over file streams. Inspect all embedded audio and subtitle tracks, and safely extract or strip specific channels without re-encoding.
+* **Smart Format Conversion:** Wrap video streams into new containers (MP4, MKV, AVI, MOV) seamlessly via stream copying—zero quality loss, instant completion.
 
-* **`remaster.py`**
-    A digital restoration engine that denoises, sharpens, color-grades, and upscales old 1970s/80s footage to clear 1080p resolution.
+### 4. Audio Processing Suite
+Unparalleled control over sound.
+* **Silence Remover:** Detects and automatically trims out silent, dead-air gaps in your audio or video files. Perfect for fast-paced podcast edits or vlog jump-cuts.
+* **Audiophile Extraction:** Rip audio tracks from video files in high-fidelity formats, supporting 320kbps MP3, 24-bit WAV, and Lossless FLAC.
+* **Volume Normalization & Mixing:** Use the custom VLC-style volume sliders across the UI to set perfect mixing levels before rendering.
 
-* **`extractor.py`**
-    Rips audio tracks from video files in high-fidelity formats, supporting 320kbps MP3, 24-bit WAV, and Lossless FLAC for audiophile-grade output.
+### 5. AI Restoration & Enhancement
+Breathe new life into old, noisy footage.
+* **Media Remastering:** Applies complex FFmpeg filter chains including `hqdn3d` (high-quality 3D denoise), `unsharp` (sharpening), and `scale` (Lanczos upscaling) to modernize vintage clips.
+* **Color Studio:** Deep color grading. Adjust brightness, contrast, saturation, and gamma.
+* **Lossless Video Compressor:** Shrink massive file sizes by intelligently optimizing audio bitrates and re-encoding video tracks using modern codecs while aiming to maintain original visual quality.
 
-* **`tracks.py`**
-    Provides surgical control over file streams, allowing you to inspect all audio/subtitle tracks and select exactly which ones to keep or delete (Multi-Select).
-
-* **`formats.py`**
-    An intelligent format converter that wraps video streams into new containers (MP4, MKV, AVI, MOV) without unnecessary re-encoding, preserving original quality.
-
-* **`compressor.py`**
-    Reduces file size by intelligently optimizing audio bitrates while maintaining the original video stream quality (Lossless Video Pass-through).
-
-* **`stitcher.py`**
-    Joins multiple video files together instantly using the "Demuxer Method," which avoids quality loss and long rendering times associated with traditional editing.
-
-* **`merger.py`**
-    Automatically scans directories to find and embed matching `.srt` subtitle files into their corresponding video containers.
-
-* **`watermark.py`**
-    Burns a logo image or text overlay onto your video at a specific position (e.g., Bottom-Right) for effective branding and copyright protection.
-
-* **`gif_maker.py`**
-    Generates crystal-clear, high-definition GIFs using a 2-pass palette generation algorithm to ensure accurate colors and smooth playback.
 ---
 
-## 🚀 Getting Started
+## 🏗️ Architectural Overview
 
-Follow these steps to set up the engine on your local machine.
+The Onyx Engine utilizes a highly decoupled, asynchronous architecture.
+* **Frontend (PyQt6):** Found in `src/ui/`. A totally custom-built dark-mode UI utilizing custom widgets, floating flashes, and advanced PyQt6 layouts to provide a premium feel.
+* **Backend Processors:** Found in `src/processors/`. These are the engines. They intercept UI signals, calculate complex FFmpeg command arrays, and execute them in isolated `subprocess` environments.
+* **Global Asynchronous Tracking:** Tasks are never run on the main UI thread. Long-running FFmpeg processes calculate ETA, Processing Speed, and Completion % by scraping `stderr` outputs in real-time, allowing users to safely cancel tasks at any moment.
+
+---
+
+## 🚀 Installation & Setup
 
 ### 1. Clone the Repository
-Start by downloading the codebase to your computer using Git. Open your terminal or command prompt and run:
-
+Start by downloading the codebase to your computer:
 ```bash
-git clone https://github.com/hrushikesh8/VIDFlow.git
-cd VidFlow-Engine
+git clone https://github.com/hrushikesh8/Onyx-Engine.git
+cd Onyx-Engine
 ```
 
-### 2. FFmpeg Setup (Critical)
+### 2. FFmpeg Setup (Critical Requirement)
+Onyx Engine utilizes **FFmpeg** and **FFprobe** under the hood. If this is not set up correctly, the application will not work.
+1. Download the build release for your OS from [ffmpeg.org/download](https://ffmpeg.org/download.html).
+2. Extract the folder to a permanent location (e.g., `C:\ffmpeg`).
+3. Add the `bin` folder (e.g., `C:\ffmpeg\bin`) to your system's `PATH` environment variable.
+4. Restart your computer or terminal for the changes to take effect.
 
-VidFlow relies on **FFmpeg** for all media processing. If this is not set up correctly, the application will not work.
-
-* **Download:** Visit [ffmpeg.org/download](https://ffmpeg.org/download.html) and download the build release for your operating system.
-* **Extract:** Unzip the folder and place it in a permanent location (e.g., `C:\ffmpeg`).
-* **Add to PATH (Windows):**
-1. Search for "Edit the system environment variables".
-2. Click **Environment Variables** -> Select **Path** -> Click **Edit**.
-3. Click **New** and paste the path to the `bin` folder inside your FFmpeg directory (e.g., `C:\ffmpeg\bin`).
-4. **Important:** Restart your computer for these changes to take effect.
-
-
-
-### 3. Install Dependencies
-
-Once inside the project folder, install the required Python libraries:
-
+### 3. Install Python Dependencies
+Ensure you have Python 3.9+ installed, then run:
 ```bash
+python -m venv venv
+.\venv\Scripts\activate  # On Windows
 pip install -r requirements.txt
 ```
+*Required packages include `PyQt6`, `requests`, `pyqtdarktheme`, `opencv-python`, etc.*
 
-*(Note: If you encounter issues, ensure you have Python 3.8+ installed).*
 ---
 
 ## 🎮 How to Use
 
-### The Main Dashboard
-
-The easiest way to use VidFlow is through the central dashboard, which guides you through every feature.
-
-1. **Run the script:**
+Simply launch the GUI application from your terminal:
 ```bash
-python main.py
+python gui_main.py
 ```
+You will be greeted by the **Onyx Engine Dashboard**. From here, navigate the sidebar to access the Timeline Composer, Editor, AI VFX tools, Chronicle Logistics, and more. 
 
+---
 
-2. **Select a Tool:** You will see a menu listing all 13 features. Type the number of the tool you want (e.g., `6` for Auto-Shorts) and press Enter.
-3. **Follow the Prompts:** The system will ask for file paths or settings. You can drag and drop your video file into the terminal window to paste the path.
-
-### Standalone Usage
-
-For automation or quick tasks, you can run any processor directly:
-
-**Example: Split a video into 30s chunks**
-
-```bash
-python src/processors/division.py "C:\Videos\Status.mp4" "chunk" 30
-```
-
-**Example: Extract Audio as MP3**
-
-```bash
-python src/processors/extractor.py "C:\Music\Video.mkv" "mp3"
-```
+## 📚 Documentation
+For a deep dive into the architecture, FFmpeg command generation logic, and detailed module breakdowns, please refer to:
+- [DOCUMENTATION.md](DOCUMENTATION.md) - For deep-dive logic and FFmpeg mechanisms.
+- [ARCHITECTURE.md](ARCHITECTURE.md) - For developers looking to extend the Python codebase.
 
 ---
 

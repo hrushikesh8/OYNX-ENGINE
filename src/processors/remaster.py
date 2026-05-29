@@ -15,6 +15,7 @@ class VideoRemaster:
         Initializes the path to the AI binaries.
         Can accept the absolute executable path directly, or a folder.
         """
+        # Resolve executable path: use absolute path if provided, otherwise assume it resides in bin_folder.
         if bin_folder.lower().endswith(".exe"):
             self.ai_bin = bin_folder
         else:
@@ -33,16 +34,16 @@ class VideoRemaster:
             scale (int): Upscale factor (2 for 1080p, 4 for 4K).
         """
         
-        # Security Check: Ensure the AI binary exists
+        # Security Check: Ensure the AI binary exists prior to initiating heavy AI workflows.
         if not os.path.exists(self.ai_bin):
             print(f"❌ Critical Error: AI Engine not found at {self.ai_bin}")
             print("Please ensure 'realesrgan-ncnn-vulkan.exe' is in your /bin folder.")
             return False
 
-        # CLI Parameters for the AI Engine:
-        # -n: realesrgan-x4plus (The most powerful model for film/live action)
-        # -s: Scale factor (2 or 4)
-        # -f: Output format (mp4)
+        # Construct the CLI arguments for the Real-ESRGAN subprocess.
+        # -n: Specifies the model architecture (realesrgan-x4plus is optimal for live-action).
+        # -s: Defines the upscale multiplication factor.
+        # -f: Output format container configuration.
         command = [
             self.ai_bin,
             "-i", input_path,
@@ -57,12 +58,13 @@ class VideoRemaster:
             print(f"🚀 Processing: {os.path.basename(input_path)} -> Upscaling x{scale}")
             print("💎 Analyzing and reconstructing frames. This may take some time...")
             
-            # Executing the portable AI binary
-            # We don't capture_output here so the user can see the progress % in terminal
+            # Execute the portable AI binary synchronously.
+            # Output is intentionally not captured to allow real-time console rendering updates.
             subprocess.run(command, check=True)
             return True
             
         except subprocess.CalledProcessError as e:
+            # Gracefully handle subprocess failures without crashing the parent application thread.
             print(f"❌ AI Remastering Failed: {e}")
             return False
         except Exception as e:

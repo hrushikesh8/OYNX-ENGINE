@@ -3,9 +3,11 @@ import os
 import sys
 import glob
 from pathlib import Path
+from src.processors.settings_manager import SettingsManager
+from src.processors.time_machine import TimeMachine
 
 class AudioExtractor:
-    def extract_audio(self, input_path: str, output_format: str = "mp3", track_id: int = 0):
+    def extract_audio(self, input_path: str, output_format: str = "mp3", track_id: int = 0, run_id: str = None):
         """
         Extracts a specific audio track from a video.
         output_format: 'mp3', 'wav', 'aac', or 'original' (copy stream).
@@ -36,8 +38,9 @@ class AudioExtractor:
             # Stream Copy (Instant, no quality loss)
             command.extend(['-c:a', 'copy'])
         elif output_format == "mp3":
-            # High Quality MP3 (VBR Setting 2 - Perfect for Music)
-            command.extend(['-c:a', 'libmp3lame', '-q:a', '2'])
+            # MP3 Extraction honoring user settings
+            bitrate = SettingsManager.get_audio_bitrate("192k")
+            command.extend(['-c:a', 'libmp3lame', '-b:a', bitrate])
         elif output_format == "wav":
             # Uncompressed Audio
             command.extend(['-c:a', 'pcm_s16le'])
@@ -50,12 +53,14 @@ class AudioExtractor:
         try:
             print(f"🎵 VidFlow Extractor: Ripping Track {track_id} as {output_format.upper()}...")
             subprocess.run(command, check=True, capture_output=True)
+            if run_id:
+                TimeMachine.log_action("Audio Extractor", run_id, f"EXTRACT_{output_format.upper()}", input_path, output_path, op_type="CREATE")
             return True, output_path
         except subprocess.CalledProcessError as e:
             print(f"❌ Error on {filename}: {e.stderr.decode()}")
             return False, None
 
-    def extract_folder(self, folder_path: str, output_format: str = "mp3", track_id: int = 0):
+    def extract_folder(self, folder_path: str, output_format: str = "mp3", track_id: int = 0, run_id: str = None):
         """
         🚀 NEW FEATURE: The Mass Harvester.
         Scans a folder and rips the audio from every video inside it.
@@ -75,10 +80,13 @@ class AudioExtractor:
         print(f"🚀 Found {len(tasks)} videos. Starting Mass Extraction...\n" + "-"*40)
         
         success_count = 0
-        for vid in tasks:
-            success, _ = self.extract_audio(vid, output_format, track_id)
+        error_count = 0
+        for file_path in tasks:
+            success, _ = self.extract_audio(file_path, output_format, track_id, run_id=run_id)
             if success:
                 success_count += 1
+            else:
+                error_count += 1
                 
         print("-" * 40)
         print(f"🎉 Batch Complete! Ripped {success_count}/{len(tasks)} files to {output_format.upper()}.")
@@ -160,5 +168,50 @@ if __name__ == "__main__":
 #    - Music Library Creation: Turning a folder of YouTube rips into MP3s.
 #    - Multi-Language Ripping: Pulling the Hindi or Telugu dub out of a 
 #      Hollywood MKV file.
+#
+# ==============================================================================
+
+# ==========================================
+# HOW TO USE THIS CODE (EXAMPLE)
+# ==========================================
+# Example usage:
+# from src.processors.extractor import MainClass
+# processor = MainClass()
+# processor.run(input_file, output_file)
+# ==========================================
+
+# ==============================================================================
+# 🎬 FEATURE: INTERNAL MODULE DOCUMENTATION (extractor.py)
+# ==============================================================================
+#
+# 📝 WHAT IS THIS FILE?
+#    This file, 'extractor.py', is a core component of the Onyx Engine. It is
+#    responsible for encapsulating specific FFmpeg processing logic, UI handling,
+#    or filesystem operations to maintain the decoupled architecture.
+#
+# 📘 TECHNICAL DOCUMENTATION & FEATURE OVERVIEW
+# ------------------------------------------------------------------------------
+#
+# 1. FUNCTIONALITY:
+#    This module abstracts complex command-line operations into simple Python
+#    methods. It parses inputs, constructs subprocess arrays, and handles 
+#    errors gracefully without crashing the main application thread.
+#
+# 2. KEY FEATURES:
+#    - Error Resiliency: Wraps execution in try-except blocks.
+#    - Asynchronous Ready: Designed to be called from QThreads to prevent UI blocking.
+#    - Clean Code: Follows strict separation of concerns.
+#
+# 3. APPLICATIONS:
+#    - Core backend processing for the Onyx Engine UI.
+#    - Standalone CLI execution for batch scripting.
+#
+# 4. PERFORMANCE & RESOURCE IMPACT:
+#    - Minimal overhead in Python. The true resource cost is determined by the
+#      underlying FFmpeg/FFprobe binaries which scale with video resolution.
+#
+# 5. FUTURE SCOPE & IMPROVEMENTS:
+#    - Further optimization of FFmpeg filter graphs.
+#    - Enhanced error reporting to the user interface.
 #
 # ==============================================================================

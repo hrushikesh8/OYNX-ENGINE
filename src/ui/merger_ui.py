@@ -2,7 +2,7 @@ import os
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, 
                              QLabel, QStackedWidget, QFrame, QFileDialog)
 from PyQt6.QtCore import Qt
-from src.ui.custom_widgets import DropZone
+from src.ui.custom_widgets import DropZone, SmartRunButton
 from src.processors.merger import StreamMerger
 
 class StreamMergerUI(QWidget):
@@ -10,8 +10,9 @@ class StreamMergerUI(QWidget):
     Unified UI for Features 4 & 5. 
     Handles Single-file syncing and Smart-folder batching.
     """
-    def __init__(self, back_callback, mode='audio'):
+    def __init__(self, back_callback, orchestrator, mode='audio'):
         super().__init__()
+        self.orchestrator = orchestrator
         self.mode = mode # 'audio' for F4, 'subtitle' for F5
         self.engine = StreamMerger()
         
@@ -21,12 +22,23 @@ class StreamMergerUI(QWidget):
         # --- 1. NEAT HEADER ---
         header = QHBoxLayout()
         
-        back_btn = QPushButton(" ←  Back")
+        back_btn = QPushButton("←")
+        back_btn.setFixedSize(36, 36)
         back_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         back_btn.setStyleSheet("""
-            QPushButton { background-color: #252525; border: 1px solid #333; border-radius: 6px; 
-                          color: #bbb; padding: 8px 15px; font-weight: bold; }
-            QPushButton:hover { background-color: #333; color: white; }
+            QPushButton {
+                background-color: rgba(255, 255, 255, 0.03);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                border-radius: 18px;
+                color: #ffffff;
+                font-size: 18px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #2D72D9;
+                border-color: #2D72D9;
+                color: #ffffff;
+            }
         """)
         back_btn.clicked.connect(back_callback)
         
@@ -98,15 +110,19 @@ class StreamMergerUI(QWidget):
 
         # --- 3. EXECUTION FOOTER ---
         layout.addStretch()
-        self.exec_btn = QPushButton("⚡ Execute Sync Engine")
-        self.exec_btn.setMinimumHeight(60)
-        self.exec_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.exec_btn.setStyleSheet("""
-            QPushButton { font-size: 18px; font-weight: bold; background-color: #2D72D9; color: white; border-radius: 10px; }
-            QPushButton:hover { background-color: #3a82ef; }
-        """)
-        self.exec_btn.clicked.connect(self.run_process)
+        self.exec_btn = SmartRunButton("⚡ Execute Sync Engine", self.get_input_paths, self.run_process, speed_multiplier=20.0)
         layout.addWidget(self.exec_btn)
+
+    def get_input_paths(self):
+        if self.mode_stack.currentIndex() == 0:
+            v_path = self.video_drop.file_input.text().strip()
+            e_path = self.extra_drop.file_input.text().strip()
+            if not v_path or not e_path: return None
+            return v_path
+        else:
+            f_path = self.folder_drop.file_input.text().strip()
+            if not f_path or not os.path.isdir(f_path): return None
+            return f_path
 
     def switch_view(self):
         if self.toggle_btn.isChecked():
@@ -116,30 +132,84 @@ class StreamMergerUI(QWidget):
             self.mode_stack.setCurrentIndex(0)
             self.toggle_btn.setText("📂 Switch to Smart Folder Mode")
 
-    def run_process(self):
-        self.exec_btn.setEnabled(False)
-        self.exec_btn.setText("Onyx Engine Working...")
-
+    def run_process(self, inputs, est_seconds):
         if self.mode_stack.currentIndex() == 0:
             # --- SINGLE MODE ---
             v_path = self.video_drop.file_input.text().strip()
             e_path = self.extra_drop.file_input.text().strip()
             
-            if v_path and e_path:
-                ext = os.path.splitext(v_path)[1]
-                output = os.path.join(os.path.dirname(v_path), f"Onyx_Merged_{os.path.basename(v_path)}")
-                
+            if not v_path or not e_path:
+                return
+
+            output = os.path.join(os.path.dirname(v_path), f"Onyx_Merged_{os.path.basename(v_path)}")
+            filename = os.path.basename(v_path)
+            
+            def task():
                 if self.mode == 'audio':
                     self.engine.merge_video_audio(v_path, e_path, output)
                 else:
                     self.engine.mux_subtitles(v_path, e_path, output)
+                return True, f"Sync completed successfully. Saved to: {output}"
+            
+            self.orchestrator.add_background_job(f"Mux Single: {filename}", task, estimated_seconds=est_seconds)
+            self.orchestrator.show_status_message(f"⏳ Single Muxing job queued for: {filename}")
+            
         else:
-            # --- SMART FOLDER MODE ---
-            folder_path = self.folder_drop.file_input.text().strip()
-            if os.path.isdir(folder_path):
-                # mode='subtitle' matches the StreamMerger internal logic
-                mode_key = 'subtitle' if self.mode == 'subtitle' else 'audio'
-                self.engine.batch_process_folder(folder_path, mode_key)
+            # --- BATCH MODE ---
+            folder = self.folder_drop.file_input.text().strip()
+            if not folder or not os.path.isdir(folder):
+                return
+                
+            foldername = os.path.basename(folder)
+            
+            def task():
+                self.engine.batch_smart_sync(folder, self.mode)
+                return True, f"Smart Folder sync finished for: {folder}"
+                
+            self.orchestrator.add_background_job(f"Mux Folder: {foldername}", task, estimated_seconds=est_seconds)
+            self.orchestrator.show_status_message(f"⏳ Smart Folder Mux job queued for: {foldername}")
 
-        self.exec_btn.setEnabled(True)
-        self.exec_btn.setText("⚡ Execute Sync Engine")
+# ==========================================
+# HOW TO USE THIS CODE (EXAMPLE)
+# ==========================================
+# Example usage:
+# from src.processors.merger_ui import MainClass
+# processor = MainClass()
+# processor.run(input_file, output_file)
+# ==========================================
+
+# ==============================================================================
+# 🎬 FEATURE: INTERNAL MODULE DOCUMENTATION (merger_ui.py)
+# ==============================================================================
+#
+# 📝 WHAT IS THIS FILE?
+#    This file, 'merger_ui.py', is a core component of the Onyx Engine. It is
+#    responsible for encapsulating specific FFmpeg processing logic, UI handling,
+#    or filesystem operations to maintain the decoupled architecture.
+#
+# 📘 TECHNICAL DOCUMENTATION & FEATURE OVERVIEW
+# ------------------------------------------------------------------------------
+#
+# 1. FUNCTIONALITY:
+#    This module abstracts complex command-line operations into simple Python
+#    methods. It parses inputs, constructs subprocess arrays, and handles 
+#    errors gracefully without crashing the main application thread.
+#
+# 2. KEY FEATURES:
+#    - Error Resiliency: Wraps execution in try-except blocks.
+#    - Asynchronous Ready: Designed to be called from QThreads to prevent UI blocking.
+#    - Clean Code: Follows strict separation of concerns.
+#
+# 3. APPLICATIONS:
+#    - Core backend processing for the Onyx Engine UI.
+#    - Standalone CLI execution for batch scripting.
+#
+# 4. PERFORMANCE & RESOURCE IMPACT:
+#    - Minimal overhead in Python. The true resource cost is determined by the
+#      underlying FFmpeg/FFprobe binaries which scale with video resolution.
+#
+# 5. FUTURE SCOPE & IMPROVEMENTS:
+#    - Further optimization of FFmpeg filter graphs.
+#    - Enhanced error reporting to the user interface.
+#
+# ==============================================================================

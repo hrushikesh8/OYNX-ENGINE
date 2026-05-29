@@ -1,9 +1,12 @@
 import subprocess
 import os
 import sys
+import glob
+from src.processors.settings_manager import SettingsManager
+from src.processors.time_machine import TimeMachine
 
 class VideoDivider:
-    def split_by_chunks(self, input_path: str, segment_time: str):
+    def split_by_chunks(self, input_path: str, segment_time: str, run_id: str = None):
         """
         Splits video into multiple equal chunks (e.g., for WhatsApp Status).
         segment_time can be seconds ('30') or HH:MM:SS ('00:00:30').
@@ -18,9 +21,12 @@ class VideoDivider:
         # -c copy: Zero quality loss.
         # -reset_timestamps 1: Essential for standalone playback of chunks.
         # -avoid_negative_ts make_zero: UPGRADE - Ensures chunks join perfectly later.
+        # 🚀 UPGRADE: Conditionally apply subtitle safeguard
+        maps = ['-map', '0:v', '-map', '0:a?'] if SettingsManager.should_safeguard_subtitles() else ['-map', '0']
+        
         command = [
             'ffmpeg', '-i', input_path, 
-            '-map', '0', 
+        ] + maps + [
             '-c', 'copy', 
             '-f', 'segment', 
             '-segment_time', str(segment_time), 
@@ -33,12 +39,19 @@ class VideoDivider:
         try:
             print(f"✂️  VidFlow Division: Dividing into chunks of {segment_time}...")
             subprocess.run(command, check=True, capture_output=True)
+            
+            # ---> TIME MACHINE LOGGING <---
+            if run_id:
+                search_pattern = os.path.join(os.path.dirname(input_path), f"{filename}_part*.mp4")
+                for generated_file in glob.glob(search_pattern):
+                    TimeMachine.log_action("Video Divider", run_id, "SPLIT_CHUNK", input_path, generated_file, op_type="CREATE")
+            
             return True
         except subprocess.CalledProcessError as e:
             print(f"❌ Error: {e.stderr.decode('utf-8')}")
             return False
 
-    def split_at_intermission(self, input_path: str, split_time: str):
+    def split_at_intermission(self, input_path: str, split_time: str, run_id: str = None):
         """
         Splits a video into exactly two parts at the specified timestamp.
         split_time can be seconds ('3600') or HH:MM:SS ('01:00:00').
@@ -55,10 +68,14 @@ class VideoDivider:
             # --- PART 1 GENERATION ---
             print(f"✂️  Generating Part 1 (Start -> {split_time})...")
             # Uses -to for precise ending point.
+            # 🚀 UPGRADE: Conditionally apply subtitle safeguard
+            maps = ['-map', '0:v', '-map', '0:a?'] if SettingsManager.should_safeguard_subtitles() else ['-map', '0']
+            
             cmd1 = [
                 'ffmpeg', '-i', input_path, 
                 '-to', str(split_time), 
-                '-map', '0', '-c', 'copy', 
+            ] + maps + [
+                '-c', 'copy', 
                 '-avoid_negative_ts', 'make_zero', 
                 '-ignore_unknown', '-y', out1
             ]
@@ -70,11 +87,17 @@ class VideoDivider:
             cmd2 = [
                 'ffmpeg', '-ss', str(split_time), 
                 '-i', input_path, 
-                '-map', '0', '-c', 'copy', 
+            ] + maps + [
+                '-c', 'copy', 
                 '-avoid_negative_ts', 'make_zero', 
                 '-ignore_unknown', '-y', out2
             ]
             subprocess.run(cmd2, check=True, capture_output=True)
+            
+            # ---> TIME MACHINE LOGGING <---
+            if run_id:
+                TimeMachine.log_action("Video Divider", run_id, "SPLIT_INTERMISSION_P1", input_path, out1, op_type="CREATE")
+                TimeMachine.log_action("Video Divider", run_id, "SPLIT_INTERMISSION_P2", input_path, out2, op_type="CREATE")
             
             return True, out1, out2
         except subprocess.CalledProcessError as e:
