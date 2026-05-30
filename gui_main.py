@@ -2,7 +2,7 @@ import sys
 import os
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
                              QHBoxLayout, QPushButton, QLabel, QStackedWidget, 
-                             QFrame, QGridLayout, QStatusBar, QProgressBar)
+                             QFrame, QGridLayout, QStatusBar, QProgressBar, QScrollArea)
 from PyQt6.QtCore import Qt, QTimer
 
 # --- FEATURE CORE & WORKER IMPORTS ---
@@ -35,8 +35,11 @@ class MasterOrchestrator(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Onyx Engine v3.0 | Professional Production Suite")
-        self.resize(1300, 850)
-        self.setMinimumSize(800, 600)
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint) # Professional Custom Title Bar
+        
+        # Default split-screen friendly minimums
+        self.resize(1000, 700) 
+        self.setMinimumSize(600, 500)
 
         # Job Queue & Thread Registry System
         self.job_queue = []
@@ -47,10 +50,24 @@ class MasterOrchestrator(QMainWindow):
 
         # Central Layout Container
         central_widget = QWidget()
+        central_widget.setStyleSheet("QWidget#centralwidget { background-color: #121212; }")
+        central_widget.setObjectName("centralwidget")
         self.setCentralWidget(central_widget)
-        self.main_layout = QHBoxLayout(central_widget)
+        
+        self.app_layout = QVBoxLayout(central_widget)
+        self.app_layout.setContentsMargins(0, 0, 0, 0)
+        self.app_layout.setSpacing(0)
+        
+        # 0. Add Custom Title Bar
+        from src.ui.title_bar import CustomTitleBar
+        self.title_bar_widget = CustomTitleBar(self)
+        self.app_layout.addWidget(self.title_bar_widget)
+
+        # Main Body Layout (Sidebar + Workspace)
+        self.main_layout = QHBoxLayout()
         self.main_layout.setContentsMargins(0, 0, 0, 0)
         self.main_layout.setSpacing(0)
+        self.app_layout.addLayout(self.main_layout)
 
         # 1. Define stacked workspace
         self.workspace = QStackedWidget()
@@ -67,26 +84,7 @@ class MasterOrchestrator(QMainWindow):
 
         # 5. Add status bar
         self.status_bar = QStatusBar()
-        self.status_bar.setStyleSheet("background-color: #181818; color: #888; border-top: 1px solid #282828;")
-        
-        # Add a settings cog icon to the right side of status bar (DaVinci Resolve style)
-        self.status_cog = QPushButton("⚙")
-        self.status_cog.setFixedSize(24, 24)
-        self.status_cog.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.status_cog.setStyleSheet("""
-            QPushButton {
-                background: transparent;
-                border: none;
-                color: #888888;
-                font-size: 16px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                color: #2D72D9;
-            }
-        """)
-        self.status_cog.clicked.connect(self.open_settings_dialog)
-        self.status_bar.addPermanentWidget(self.status_cog)
+        self.status_bar.setStyleSheet("background-color: #181818; color: #888; border-top: 1px solid #282828; padding-bottom: 4px; padding-top: 2px;")
         
         # --- GLOBAL PROGRESS PANEL ---
         self.global_progress_panel = QWidget()
@@ -159,6 +157,17 @@ class MasterOrchestrator(QMainWindow):
 
         # Brand Identity & Toggle Row
         brand_row = QHBoxLayout()
+        
+        self.brand_icon = QLabel()
+        import os, sys
+        from PyQt6.QtGui import QPixmap
+        from PyQt6.QtCore import Qt
+        base_path = getattr(sys, '_MEIPASS', os.path.abspath("."))
+        logo_path = os.path.join(base_path, "assets", "onyx_logo.png")
+        if os.path.exists(logo_path):
+            self.brand_icon.setPixmap(QPixmap(logo_path).scaled(24, 24, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+            self.brand_icon.setStyleSheet("margin-right: 5px;")
+        
         self.brand_label = QLabel("ONYX ENGINE")
         self.brand_label.setStyleSheet("font-size: 18px; font-weight: 900; color: white; letter-spacing: 2px;")
         
@@ -181,6 +190,7 @@ class MasterOrchestrator(QMainWindow):
         """)
         self.btn_toggle.clicked.connect(self.toggle_sidebar)
         
+        brand_row.addWidget(self.brand_icon)
         brand_row.addWidget(self.brand_label)
         brand_row.addStretch()
         brand_row.addWidget(self.btn_toggle)
@@ -195,7 +205,7 @@ class MasterOrchestrator(QMainWindow):
         self.btn_format = self.create_nav_button("🔄", "Format & Container", True)
         self.btn_edit = self.create_nav_button("🎬", "Edit & Cut", True)
         self.btn_audio = self.create_nav_button("🎵", "Audio & Subtitles", True)
-        self.btn_ai = self.create_nav_button("💎", "AI & VFX", True)
+        self.btn_ai = self.create_nav_button("✨", "AI & VFX", True)
         self.btn_logistics = self.create_nav_button("📦", "Logistics & Archive", True)
         self.btn_chronicle = self.create_nav_button("🎬", "Chronicle Organizer", True)
 
@@ -273,6 +283,7 @@ class MasterOrchestrator(QMainWindow):
         if self.sidebar_collapsed:
             self.sidebar.setFixedWidth(68)
             self.brand_label.hide()
+            self.brand_icon.hide()
             self.version_label.hide()
             for btn in self.nav_buttons + [self.btn_settings]:
                 btn.setText(btn.icon_char)
@@ -303,6 +314,7 @@ class MasterOrchestrator(QMainWindow):
         else:
             self.sidebar.setFixedWidth(260)
             self.brand_label.show()
+            self.brand_icon.show()
             self.version_label.show()
             for btn in self.nav_buttons + [self.btn_settings]:
                 btn.setText(f"  {btn.icon_char}    {btn.text_label}")
@@ -450,7 +462,7 @@ class MasterOrchestrator(QMainWindow):
         
         grid_ai = QGridLayout()
         grid_ai.setSpacing(25)
-        grid_ai.addWidget(self.create_tool_card("💎 AI Remaster & Motion", "Real-ESRGAN upscaling, RIFE 60FPS, and chaptering.", 17), 0, 0)
+        grid_ai.addWidget(self.create_tool_card("✨ AI Remaster & Motion", "Real-ESRGAN upscaling, RIFE 60FPS, and chaptering.", 17), 0, 0)
         grid_ai.addWidget(self.create_tool_card("🎨 VFX, Branding & GIFs", "Overlay watermarks, delogo eraser, and HD GIFs.", 18), 0, 1)
         ai_layout.addLayout(grid_ai)
         ai_layout.addStretch()

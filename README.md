@@ -46,6 +46,10 @@ Breathe new life into old, noisy footage.
 
 The Onyx Engine utilizes a highly decoupled, asynchronous architecture.
 * **Frontend (PyQt6):** Found in `src/ui/`. A totally custom-built dark-mode UI utilizing custom widgets, floating flashes, and advanced PyQt6 layouts to provide a premium feel.
+  - **Professional Frameless Window:** Features a custom draggable title bar with an integrated comprehensive `QMenuBar` for instant navigation.
+  - **Premium Branding:** Features the custom Onyx Engine geometric gem logo and UI enhancements.
+  - **VLC-Style Controls:** Integrated 0-200% volume wedge sliders in all media preview hubs.
+  - **Persistent Directory Memory:** Instantly remembers your last active folder across all tools.
 * **Backend Processors:** Found in `src/processors/`. These are the engines. They intercept UI signals, calculate complex FFmpeg command arrays, and execute them in isolated `subprocess` environments.
 * **Global Asynchronous Tracking:** Tasks are never run on the main UI thread. Long-running FFmpeg processes calculate ETA, Processing Speed, and Completion % by scraping `stderr` outputs in real-time, allowing users to safely cancel tasks at any moment.
 

@@ -3,7 +3,7 @@ import json
 import sys
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, 
                              QLabel, QFrame, QLineEdit, QGridLayout, QTableWidget, 
-                             QTableWidgetItem, QProgressBar, QTextEdit, QFileDialog, QHeaderView)
+                             QTableWidgetItem, QProgressBar, QTextEdit, QFileDialog, QHeaderView, QScrollArea)
 from PyQt6.QtGui import QColor, QFont
 from PyQt6.QtCore import Qt, QTimer
 from src.ui.custom_widgets import DropZone, ConsoleLogger
@@ -27,9 +27,20 @@ class DashboardUI(QWidget):
         self.settings_file = "onyx_settings.json"
         self.load_settings()
 
-        layout = QVBoxLayout(self)
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setStyleSheet("QScrollArea { border: none; background: transparent; }")
+        
+        container = QWidget()
+        layout = QVBoxLayout(container)
         layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         layout.setContentsMargins(30, 30, 30, 30)
+        
+        scroll.setWidget(container)
+        main_layout.addWidget(scroll)
 
         # --- 1. SYSTEM STATS BAR ---
         stats_frame = QFrame()

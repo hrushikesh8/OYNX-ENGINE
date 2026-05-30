@@ -793,11 +793,14 @@ class TimelineComposerUI(QWidget):
         self.select_clip_row(len(self.clips) - 1)
 
     def browse_audio_overlay(self):
+        import sys
+        start_dir = getattr(sys, '_onyx_last_dir', os.path.expanduser("~"))
         files, _ = QFileDialog.getOpenFileNames(
-            self, "Select Background Music Track Overlay", "", 
+            self, "Select Background Music Track Overlay", start_dir, 
             "Audio Files (*.mp3 *.wav *.m4a *.aac *.ogg);;All Files (*)"
         )
         if files:
+            sys._onyx_last_dir = os.path.dirname(files[0])
             for path in files:
                 duration, _, _ = get_media_properties(path)
                 aud = {
@@ -1388,16 +1391,20 @@ class TimelineComposerUI(QWidget):
             self.orchestrator.show_status_message("🔴 Render aborted by user.")
 
     def trigger_render(self, inputs, est_seconds):
+        import sys
         if not self.clips:
             self.orchestrator.show_status_message("❌ Error: No media clips loaded!")
             return
 
+        start_dir = getattr(sys, '_onyx_last_dir', os.path.expanduser("~"))
         save_file, _ = QFileDialog.getSaveFileName(
-            self, "Save Timeline Composition Video", "", 
+            self, "Save Timeline Composition Video", start_dir, 
             "MPEG-4 Video (*.mp4)"
         )
         if not save_file:
             return
+        
+        sys._onyx_last_dir = os.path.dirname(save_file)
 
         width = self.width_input.value()
         height = self.height_input.value()

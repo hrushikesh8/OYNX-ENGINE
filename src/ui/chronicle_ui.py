@@ -1,7 +1,7 @@
 import os
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
                              QRadioButton, QButtonGroup, QLineEdit, QPushButton, 
-                             QDialog, QComboBox, QListWidget, QMessageBox)
+                             QDialog, QComboBox, QListWidget, QMessageBox, QScrollArea)
 from PyQt6.QtCore import Qt
 from src.ui.custom_widgets import DropZone, SmartRunButton, ConsoleLogger
 from src.processors.time_machine import TimeMachine
@@ -108,8 +108,19 @@ class ChronicleUI(QWidget):
     def setup_ui(self):
         # Master layout for the whole page
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(20, 20, 20, 20)
-        main_layout.setSpacing(15)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setStyleSheet("QScrollArea { border: none; background: transparent; }")
+        
+        container = QWidget()
+        layout = QVBoxLayout(container)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(15)
+        
+        scroll.setWidget(container)
+        main_layout.addWidget(scroll)
 
         # Centered Container
         center_layout = QVBoxLayout()
@@ -205,20 +216,20 @@ class ChronicleUI(QWidget):
         self.undo_btn.clicked.connect(self.open_time_machine)
         center_layout.addWidget(self.undo_btn, alignment=Qt.AlignmentFlag.AlignHCenter)
 
-        main_layout.addLayout(center_layout)
+        layout.addLayout(center_layout)
         
         # 6. Embedded Console Box
         self.console = ConsoleLogger()
         self.console.setFixedHeight(100)
         self.console.append_log("☑ GUI Initialized. Time Machine Core online.\n")
-        main_layout.addWidget(self.console)
+        layout.addWidget(self.console)
 
         # 7. Smart Run Button
         self.run_btn = SmartRunButton("🚀 Ignite Engine", 
                                       get_input_paths_callback=lambda: self.path_selector.file_input.text().strip(), 
                                       on_confirm_callback=self.execute_engine)
         self.run_btn.setFixedHeight(65)
-        main_layout.addWidget(self.run_btn)
+        layout.addWidget(self.run_btn)
 
     def open_time_machine(self):
         dialog = TimeMachineDialog(self)

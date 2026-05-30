@@ -3,6 +3,7 @@ from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
                              QLabel, QListWidget, QAbstractItemView, QCheckBox, 
                              QFrame, QFileDialog)
 from PyQt6.QtCore import Qt
+import sys
 from src.processors import suture_merger
 from src.ui.custom_widgets import SmartRunButton
 
@@ -157,8 +158,10 @@ class SeamlessSutureUI(QWidget):
         return [self.file_list.item(i).text() for i in range(count)]
 
     def browse_files(self):
-        files, _ = QFileDialog.getOpenFileNames(self, "Select Video Parts", "", "Video Files (*.mp4 *.mkv *.avi)")
+        start_dir = getattr(sys, '_onyx_last_dir', os.path.expanduser("~\\Desktop"))
+        files, _ = QFileDialog.getOpenFileNames(self, "Select Video Parts", start_dir, "Video Files (*.mp4 *.mkv *.avi)")
         if files:
+            sys._onyx_last_dir = os.path.dirname(files[0])
             for f in files: self.file_list.addItem(f)
 
     def remove_selected_item(self):

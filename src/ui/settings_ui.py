@@ -283,9 +283,13 @@ class SettingsUI(QDialog):
         except Exception as e:
             self.orchestrator.show_status_message(f"❌ Error saving preferences: {str(e)}")
 
-    def browse_pref(self, key):
-        file_name, _ = QFileDialog.getOpenFileName(self, f"Select binary for {key}", "", "Executable Files (*.exe);;All Files (*)")
+    def browse_binary(self, key):
+        import sys
+        import os
+        start_dir = getattr(sys, '_onyx_last_dir', os.path.expanduser("~"))
+        file_name, _ = QFileDialog.getOpenFileName(self, f"Select binary for {key}", start_dir, "Executable Files (*.exe);;All Files (*)")
         if file_name:
+            sys._onyx_last_dir = os.path.dirname(file_name)
             self.path_inputs[key].setText(file_name)
 
 
