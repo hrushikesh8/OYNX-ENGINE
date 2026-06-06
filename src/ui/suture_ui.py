@@ -181,7 +181,7 @@ class SeamlessSutureUI(QWidget):
             suture_merger.run_suture_workflow(ordered_files, final_output, use_cv)
             return True, f"Seamless Suture completed successfully. Output saved to: {final_output}"
 
-        self.orchestrator.add_background_job("Seamless Suture", task, estimated_seconds=est_seconds)
+        self.orchestrator.add_background_job("Seamless Suture", task, estimated_seconds=est_seconds, local_widget=self.exec_btn)
         self.orchestrator.show_status_message("⏳ Seamless Suture task queued.")
 
 # ==========================================

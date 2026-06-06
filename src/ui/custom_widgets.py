@@ -241,61 +241,125 @@ class EstimateWorker(QThread):
 
         self.estimation_done.emit(est_str, int(estimated_seconds))
 
-class SmartRunButton(QPushButton):
+class SmartRunButton(QWidget):
     """
     A universal 2-stage run button that natively calculates estimated job duration
-    before allowing the user to confirm.
+    before allowing the user to confirm. Now acts as a container for an inline progress bar.
+    Can also be used as a standard 1-stage button if callbacks are omitted.
     """
-    def __init__(self, text, get_input_paths_callback, on_confirm_callback, speed_multiplier=1.0):
-        super().__init__(text)
+    clicked = pyqtSignal()
+    
+    def __init__(self, text, get_input_paths_callback=None, on_confirm_callback=None, speed_multiplier=1.0):
+        super().__init__()
+        self.layout = QVBoxLayout(self)
+        self.layout.setContentsMargins(0, 0, 0, 0)
+        self.layout.setSpacing(5)
+
+        self.btn = QPushButton(text)
         self.original_text = text
         self.get_input_paths_callback = get_input_paths_callback
         self.on_confirm_callback = on_confirm_callback
         self.speed_multiplier = speed_multiplier
         self.est_seconds = 0
         
-        self.setMinimumHeight(60)
-        self.setStyleSheet("""
+        self.btn.setMinimumHeight(60)
+        self.btn.setStyleSheet("""
             QPushButton { background-color: #2D72D9; color: white; font-size: 18px; font-weight: bold; border-radius: 8px; }
             QPushButton:hover { background-color: #3a82ef; }
         """)
-        self.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.clicked.connect(self.handle_click)
+        self.btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn.clicked.connect(self.handle_click)
+        
+        self.progress = QProgressBar()
+        self.progress.setTextVisible(True)
+        self.progress.setMinimumHeight(40)
+        self.progress.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.progress.hide()
+
+        self.layout.addWidget(self.btn)
+        self.layout.addWidget(self.progress)
+        
+    def text(self):
+        return self.btn.text()
+
+    def setText(self, text):
+        self.btn.setText(text)
+        
+    def setStyleSheet(self, style):
+        self.btn.setStyleSheet(style)
+        
+    def setEnabled(self, enabled):
+        self.btn.setEnabled(enabled)
+
+    def setMinimumHeight(self, h):
+        self.btn.setMinimumHeight(h)
 
     def handle_click(self):
-        if self.text() == self.original_text:
+        if not self.get_input_paths_callback and not self.on_confirm_callback:
+            self.progress.hide()
+            self.clicked.emit()
+            return
+            
+        if self.btn.text() == self.original_text:
             paths = self.get_input_paths_callback()
             if not paths:
                 return # Validation failed or handled by parent UI
             
             self.current_inputs = paths
                 
-            self.setText("⏳ Estimating...")
-            self.setEnabled(False)
+            self.btn.setText("⏳ Estimating...")
+            self.btn.setEnabled(False)
             
             multiplier = self.speed_multiplier() if callable(self.speed_multiplier) else self.speed_multiplier
             self.worker = EstimateWorker(paths, multiplier)
             self.worker.estimation_done.connect(self.on_est_done)
             self.worker.start()
             
-        elif self.text().startswith("✅ Confirm"):
-            self.setText(self.original_text)
-            self.setStyleSheet("""
+        elif self.btn.text().startswith("✅ Confirm"):
+            self.btn.setText(self.original_text)
+            self.btn.setStyleSheet("""
                 QPushButton { background-color: #2D72D9; color: white; font-size: 18px; font-weight: bold; border-radius: 8px; }
                 QPushButton:hover { background-color: #3a82ef; }
             """)
             self.on_confirm_callback(self.current_inputs, self.est_seconds)
             
     def on_est_done(self, est_str, est_seconds):
-        self.setEnabled(True)
+        self.btn.setEnabled(True)
         self.est_seconds = est_seconds
         if est_str.startswith("Error"):
-            self.setText(self.original_text)
+            self.btn.setText(self.original_text)
         else:
-            self.setText(f"✅ Confirm Run (Est. {est_str})")
-            self.setStyleSheet("""
+            self.btn.setText(f"✅ Confirm Run (Est. {est_str})")
+            self.btn.setStyleSheet("""
                 QPushButton { background-color: #28a745; color: white; font-size: 18px; font-weight: bold; border-radius: 8px; }
                 QPushButton:hover { background-color: #218838; }
+            """)
+
+    def update_progress(self, pct, txt):
+        self.btn.setEnabled(False)
+        self.progress.show()
+        self.progress.setValue(pct)
+        self.progress.setFormat(txt)
+        self.progress.setStyleSheet("""
+            QProgressBar { background-color: #222; border: 1px solid #333; border-radius: 8px; color: white; font-weight: bold; font-size: 14px; }
+            QProgressBar::chunk { background-color: #2D72D9; border-radius: 8px; }
+        """)
+
+    def mark_finished(self, success, msg):
+        self.btn.setEnabled(True)
+        self.progress.show()
+        self.progress.setValue(100)
+        if success:
+            self.progress.setFormat("✅ Task Finished Successfully")
+            self.progress.setStyleSheet("""
+                QProgressBar { background-color: #222; border: 1px solid #333; border-radius: 8px; color: white; font-weight: bold; font-size: 14px; }
+                QProgressBar::chunk { background-color: #28a745; border-radius: 8px; }
+            """)
+        else:
+            self.progress.setFormat("❌ Failed / Interrupted")
+            self.progress.setStyleSheet("""
+                QProgressBar { background-color: #222; border: 1px solid #333; border-radius: 8px; color: white; font-weight: bold; font-size: 14px; }
+                QProgressBar::chunk { background-color: #dc3545; border-radius: 8px; }
             """)
 
 class ConsoleLogger(QTextEdit):
@@ -483,24 +547,39 @@ class VLCVolumeSlider(QWidget):
         
         w = self.width()
         h = self.height()
-        offset_x = 35
-        wedge_w = w - offset_x
         
-        # Draw text on the left
+        # 1. Draw Speaker Icon
+        icon_w = 20
         painter.setPen(QColor(200, 200, 200))
-        text = f"{self._value}%"
         font = painter.font()
-        font.setPointSize(9)
+        font.setPointSize(12)
         painter.setFont(font)
-        painter.drawText(0, 0, 30, h, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter, text)
+        # Use a unicode speaker icon depending on volume
+        if self._value == 0:
+            icon = "🔇"
+        elif self._value < 50:
+            icon = "🔉"
+        else:
+            icon = "🔊"
+        painter.drawText(0, 0, icon_w, h, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, icon)
         
+        # 2. Draw Percentage Text
+        text_w = 30
+        font.setPointSize(8)
+        painter.setFont(font)
+        text = f"{self._value}%"
+        painter.drawText(icon_w, 0, text_w, h, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, text)
+        
+        # 3. Draw the Wedge
+        offset_x = icon_w + text_w + 5
+        wedge_w = w - offset_x - 5 # 5px right padding
         if wedge_w <= 0: return
         
         # The wedge polygon (triangle)
         poly = QPolygonF([
-            QPointF(offset_x, h),
-            QPointF(w, h),
-            QPointF(w, 0)
+            QPointF(offset_x, h - 2),
+            QPointF(offset_x + wedge_w, h - 2),
+            QPointF(offset_x + wedge_w, 2)
         ])
         
         # Draw background wedge
@@ -511,7 +590,23 @@ class VLCVolumeSlider(QWidget):
         # Draw filled wedge
         fill_w = wedge_w * (self._value / 200.0)
         painter.setClipRect(QRectF(offset_x, 0, fill_w, h))
-        painter.setBrush(QBrush(QColor(0, 200, 0))) # VLC green
+        from PyQt6.QtGui import QLinearGradient, QPen
+        grad = QLinearGradient(offset_x, 0, offset_x + wedge_w, 0)
+        grad.setColorAt(0.0, QColor(0, 200, 0))    # Green
+        grad.setColorAt(0.7, QColor(200, 200, 0))  # Yellow
+        grad.setColorAt(1.0, QColor(255, 50, 50))  # Red
+        painter.setBrush(QBrush(grad))
+        painter.drawPolygon(poly)
+        
+        # Remove clipping to draw the outline over everything
+        painter.setClipping(False)
+        
+        # Draw the outline border
+        pen = QPen(QColor(100, 100, 100))
+        pen.setWidth(1)
+        pen.setJoinStyle(Qt.PenJoinStyle.MiterJoin)
+        painter.setPen(pen)
+        painter.setBrush(Qt.BrushStyle.NoBrush)
         painter.drawPolygon(poly)
 
 # ==========================================

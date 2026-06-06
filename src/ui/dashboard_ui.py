@@ -6,7 +6,7 @@ from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
                              QTableWidgetItem, QProgressBar, QTextEdit, QFileDialog, QHeaderView, QScrollArea)
 from PyQt6.QtGui import QColor, QFont
 from PyQt6.QtCore import Qt, QTimer
-from src.ui.custom_widgets import DropZone, ConsoleLogger
+from src.ui.custom_widgets import DropZone, SmartRunButton, ConsoleLogger
 from src.processors.metadata_editor import MetadataEditor
 
 # Try importing psutil for real stats, otherwise mock it
@@ -211,7 +211,7 @@ class DashboardUI(QWidget):
 
         # Run command asynchronously using orchestrator job queue
         cmd_list = self.meta_editor.write_metadata(path, output_path, tags)
-        self.orchestrator.add_background_job(f"Tag Metadata: {name}", cmd_list)
+        self.orchestrator.add_background_job(f"Tag Metadata: {name}", cmd_list, local_widget=self.tag_btn)
         self.log_console.append(f"⏳ Queueing metadata updates for: {filename}")
 
     # --- LIVE RENDER QUEUE TABLE ---

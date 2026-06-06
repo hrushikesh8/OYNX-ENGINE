@@ -151,7 +151,7 @@ class AIRestorationUI(QWidget):
                 full_out = service.start_full_remaster(path)
                 return True, f"Full movie remaster complete. Output saved to: {full_out}"
 
-        self.orchestrator.add_background_job(f"AI Remaster: {filename}", task, estimated_seconds=est_seconds)
+        self.orchestrator.add_background_job(f"AI Remaster: {filename}", task, estimated_seconds=est_seconds, local_widget=self.remaster_btn)
         self.orchestrator.show_status_message(f"⏳ Remaster task queued for: {filename}")
 
     # =========================================================================
@@ -204,7 +204,7 @@ class AIRestorationUI(QWidget):
             engine = MotionFluidizer(bin_folder=bin_path)
             return engine.smooth_motion(path, output_name, multiplier=mult)
 
-        self.orchestrator.add_background_job(f"RIFE Motion: {base}", task, estimated_seconds=est_seconds)
+        self.orchestrator.add_background_job(f"RIFE Motion: {base}", task, estimated_seconds=est_seconds, local_widget=self.motion_btn)
         self.orchestrator.show_status_message(f"⏳ Motion interpolation queued for: {filename}")
 
     # =========================================================================
@@ -241,7 +241,7 @@ class AIRestorationUI(QWidget):
             engine = MediaIntel()
             return engine.analyze_and_chapter(path)
 
-        self.orchestrator.add_background_job(f"Media Intel: {filename}", task, estimated_seconds=est_seconds)
+        self.orchestrator.add_background_job(f"Media Intel: {filename}", task, estimated_seconds=est_seconds, local_widget=self.intel_btn)
         self.orchestrator.show_status_message(f"⏳ Chaptering analysis queued for: {filename}")
 
     # =========================================================================
@@ -322,7 +322,7 @@ class AIRestorationUI(QWidget):
             success = processor.stabilize(path, output_path, shakiness=shakiness, accuracy=accuracy, smoothing=smoothing)
             return success, f"Stabilization finished. Output saved to: {output_path}" if success else "Stabilization failed."
 
-        self.orchestrator.add_background_job(f"Stabilize: {name}", task, estimated_seconds=est_seconds)
+        self.orchestrator.add_background_job(f"Stabilize: {name}", task, estimated_seconds=est_seconds, local_widget=self.stabilize_btn)
         self.orchestrator.show_status_message(f"⏳ Stabilization task queued for: {name}")
 
 

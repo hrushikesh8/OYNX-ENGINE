@@ -78,7 +78,7 @@ python -m venv venv
 .\venv\Scripts\activate  # On Windows
 pip install -r requirements.txt
 ```
-*Required packages include `PyQt6`, `requests`, `pyqtdarktheme`, `opencv-python`, etc.*
+*Required packages include `PyQt6`, `requests`, `pyqtdarktheme`, `opencv-python`, and optionally `openai-whisper` for AI transcription.*
 
 ---
 
@@ -96,6 +96,14 @@ You will be greeted by the **Onyx Engine Dashboard**. From here, navigate the si
 For a deep dive into the architecture, FFmpeg command generation logic, and detailed module breakdowns, please refer to:
 - [DOCUMENTATION.md](DOCUMENTATION.md) - For deep-dive logic and FFmpeg mechanisms.
 - [ARCHITECTURE.md](ARCHITECTURE.md) - For developers looking to extend the Python codebase.
+
+---
+
+## 🛠️ Recent Updates
+*   **Universal Inline Progress Bars:** All tools now feature localized, VLC-style progress bars integrated directly into their execution buttons. They offer live visual completion tracking (filling from left to right) and instantly signal success (green) or failure/interruption (red).
+*   **Codebase Stability & Type Safety:** Comprehensive overhaul of type hinting across UI and backend processors.
+*   **Resiliency:** Enhanced null-safety handling in complex multi-stream operations to prevent application crashing.
+*   **Performance:** Stripped redundant string and integer conversions for cleaner execution.
 
 ---
 

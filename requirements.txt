@@ -6,3 +6,6 @@ PyQt6-Qt6==6.11.0
 PyQt6_sip==13.11.1
 pyqtdarktheme==2.1.0
 requests==2.31.0
+
+# Optional AI Transcription feature
+openai-whisper>=20231117

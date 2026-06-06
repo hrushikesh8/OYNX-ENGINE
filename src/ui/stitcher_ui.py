@@ -137,7 +137,7 @@ class VideoStitcherUI(QWidget):
             success = self.stitcher_engine.concat_videos(video_paths, output_file)
             return success, f"Video stitching finished. Output: {output_file}" if success else "Stitching failed."
 
-        self.orchestrator.add_background_job("Video Stitcher", task, estimated_seconds=est_seconds)
+        self.orchestrator.add_background_job("Video Stitcher", task, estimated_seconds=est_seconds, local_widget=self.exec_btn)
         self.orchestrator.show_status_message("⏳ Video stitching task queued.")
 
 # ==========================================

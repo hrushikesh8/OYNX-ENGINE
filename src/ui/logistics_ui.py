@@ -2,7 +2,7 @@ import os
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, 
                              QLabel, QFrame, QLineEdit, QComboBox, QCheckBox, QTabWidget)
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
-from src.ui.custom_widgets import DropZone
+from src.ui.custom_widgets import DropZone, SmartRunButton
 from src.processors.archiver import FolderArchiver
 from src.processors.unarchiver import EnterpriseUnarchiver
 from src.processors.compressor import VideoCompressor
@@ -136,7 +136,7 @@ class LogisticsUI(QWidget):
         t_layout.addWidget(self.zip_mode)
         t_layout.addSpacing(25)
 
-        self.arc_btn = QPushButton("🚀 Run Batch Folder Archiver")
+        self.arc_btn = SmartRunButton("🚀 Run Batch Folder Archiver")
         self.arc_btn.setMinimumHeight(60)
         self.arc_btn.setStyleSheet("background-color: #2D72D9; color: white; font-size: 16px; font-weight: bold; border-radius: 8px;")
         self.arc_btn.clicked.connect(self.run_archiver)
@@ -156,7 +156,7 @@ class LogisticsUI(QWidget):
         def task():
             return self.archiver.batch_zip_folders(parent_dir, compress=compress)
 
-        self.orchestrator.add_background_job(f"Archive Folders: {foldername}", task)
+        self.orchestrator.add_background_job(f"Archive Folders: {foldername}", task, local_widget=self.arc_btn)
         self.orchestrator.show_status_message(f"⏳ Archiving task queued for: {foldername}")
 
     # =========================================================================
@@ -177,7 +177,7 @@ class LogisticsUI(QWidget):
         t_layout.addWidget(self.unarc_dest)
         t_layout.addSpacing(25)
 
-        self.unarc_btn = QPushButton("🔓 Extract with 7-Zip Engine")
+        self.unarc_btn = SmartRunButton("🔓 Extract with 7-Zip Engine")
         self.unarc_btn.setMinimumHeight(60)
         self.unarc_btn.setStyleSheet("background-color: #2D72D9; color: white; font-size: 16px; font-weight: bold; border-radius: 8px;")
         self.unarc_btn.clicked.connect(self.run_unarchiver)
@@ -211,7 +211,7 @@ class LogisticsUI(QWidget):
         def task():
             return self.unarchiver.extract_archive(zip_path, dest_folder)
 
-        self.orchestrator.add_background_job(f"Extract ZIP: {filename}", task)
+        self.orchestrator.add_background_job(f"Extract ZIP: {filename}", task, local_widget=self.unarc_btn)
         self.orchestrator.show_status_message(f"⏳ Extraction task queued for: {filename}")
 
     # =========================================================================
@@ -235,7 +235,7 @@ class LogisticsUI(QWidget):
         t_layout.addWidget(self.bitrate_combo)
         t_layout.addSpacing(25)
 
-        self.comp_btn = QPushButton("🗜️ Execute Media Compression")
+        self.comp_btn = SmartRunButton("🗜️ Execute Media Compression")
         self.comp_btn.setMinimumHeight(60)
         self.comp_btn.setStyleSheet("background-color: #2D72D9; color: white; font-size: 16px; font-weight: bold; border-radius: 8px;")
         self.comp_btn.clicked.connect(self.run_compressor)
@@ -258,7 +258,7 @@ class LogisticsUI(QWidget):
         def task():
             return self.compressor.compress_audio_maintain_video(path, output_path, bitrate=bitrate)
 
-        self.orchestrator.add_background_job(f"Compress Video: {name}", task)
+        self.orchestrator.add_background_job(f"Compress Video: {name}", task, local_widget=self.comp_btn)
         self.orchestrator.show_status_message(f"⏳ Compression task queued for: {name}")
 
     # =========================================================================
@@ -284,7 +284,7 @@ class LogisticsUI(QWidget):
         t_layout.addWidget(self.watcher_status)
         t_layout.addSpacing(15)
 
-        self.watch_btn = QPushButton("👁️ Start Smart Directory Watcher")
+        self.watch_btn = SmartRunButton("👁️ Start Smart Directory Watcher")
         self.watch_btn.setMinimumHeight(60)
         self.watch_btn.setStyleSheet("background-color: #00ff66; color: #111; font-size: 16px; font-weight: bold; border-radius: 8px;")
         self.watch_btn.clicked.connect(self.toggle_watcher)

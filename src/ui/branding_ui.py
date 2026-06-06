@@ -126,7 +126,7 @@ class BrandingUI(QWidget):
         def task():
             return self.watermarker.add_image_watermark(vid, img, output_path, position=pos)
 
-        self.orchestrator.add_background_job(f"Burn Watermark: {name}", task, estimated_seconds=est_seconds)
+        self.orchestrator.add_background_job(f"Burn Watermark: {name}", task, estimated_seconds=est_seconds, local_widget=self.burn_btn)
         self.orchestrator.show_status_message(f"⏳ Branding task queued for: {name}")
 
     # =========================================================================
@@ -192,7 +192,7 @@ class BrandingUI(QWidget):
             output_path
         ]
 
-        self.orchestrator.add_background_job(f"Delogo: {name}", cmd, estimated_seconds=est_seconds)
+        self.orchestrator.add_background_job(f"Delogo: {name}", cmd, estimated_seconds=est_seconds, local_widget=self.rem_btn)
         self.orchestrator.show_status_message(f"⏳ Delogo task queued for: {filename}")
 
     # =========================================================================
@@ -268,7 +268,7 @@ class BrandingUI(QWidget):
         def task():
             return self.gif_maker.create_gif(path, output_path, start_time=start, duration=dur, scale=scale, preset=preset)
 
-        self.orchestrator.add_background_job(f"GIF Gen: {name}", task, estimated_seconds=est_seconds)
+        self.orchestrator.add_background_job(f"GIF Gen: {name}", task, estimated_seconds=est_seconds, local_widget=self.gif_btn)
         self.orchestrator.show_status_message(f"⏳ GIF creation queued for: {name}")
 
     # =========================================================================
@@ -365,7 +365,7 @@ class BrandingUI(QWidget):
             success = processor.adjust_colors(path, output_path, brightness=b, contrast=c, saturation=s, gamma=g, lut_path=lut)
             return success, f"Color grading complete. Saved at: {output_path}" if success else "Color grading failed."
 
-        self.orchestrator.add_background_job(f"Color Studio: {name}", task, estimated_seconds=est_seconds)
+        self.orchestrator.add_background_job(f"Color Studio: {name}", task, estimated_seconds=est_seconds, local_widget=self.color_btn)
         self.orchestrator.show_status_message(f"⏳ Color Grading queued for: {name}")
 
 

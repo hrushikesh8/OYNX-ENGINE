@@ -343,7 +343,7 @@ class SceneSniperUI(QWidget):
             else:
                 return False, "Failed to extract scene."
 
-        self.orchestrator.add_background_job(f"Scene Sniper: {name_only}", task, estimated_seconds=est_seconds)
+        self.orchestrator.add_background_job(f"Scene Sniper: {name_only}", task, estimated_seconds=est_seconds, local_widget=self.exec_btn)
         self.orchestrator.show_status_message(f"⏳ Sniper task queued for: {file_name}")
 
 # ==========================================

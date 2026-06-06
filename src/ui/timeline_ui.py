@@ -1465,7 +1465,7 @@ class TimelineComposerUI(QWidget):
         self.progress_bar.setValue(0)
         self.progress_label.setText("Starting compiler engine...")
 
-        self.orchestrator.add_background_job("Timeline Render", render_job, estimated_seconds=est_seconds)
+        self.orchestrator.add_background_job("Timeline Render", render_job, estimated_seconds=est_seconds, local_widget=self.exec_btn)
         
         # Link render worker
         job = self.orchestrator.job_queue[-1]

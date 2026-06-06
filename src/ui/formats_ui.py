@@ -98,7 +98,7 @@ class FormatConverterUI(QWidget):
             success, errors = self.mapper.process_input(input_path, output_dir, target_fmt)
             return True, f"Format conversion finished. Success: {success} | Errors: {errors}"
 
-        self.orchestrator.add_background_job(f"Format Convert: {filename}", task, estimated_seconds=est_seconds)
+        self.orchestrator.add_background_job(f"Format Convert: {filename}", task, estimated_seconds=est_seconds, local_widget=self.exec_btn)
         self.orchestrator.show_status_message(f"⏳ Format conversion queued for: {filename}")
 
 # ==========================================

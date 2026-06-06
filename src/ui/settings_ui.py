@@ -3,7 +3,7 @@ import json
 from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QPushButton, 
                              QLabel, QFrame, QLineEdit, QComboBox, QFileDialog, QGridLayout)
 from PyQt6.QtCore import Qt
-from src.ui.custom_widgets import DropZone
+from src.ui.custom_widgets import DropZone, SmartRunButton
 
 class SettingsUI(QDialog):
     """

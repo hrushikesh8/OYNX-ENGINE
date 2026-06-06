@@ -127,7 +127,7 @@ class AudioExtractorUI(QWidget):
             success, out = self.extractor.extract_audio(path, output_format=fmt, track_id=track_id)
             return success, f"Audio saved to: {out}" if success else "Audio extraction failed."
 
-        self.orchestrator.add_background_job(f"Audio Extract: {filename}", task, estimated_seconds=est_seconds)
+        self.orchestrator.add_background_job(f"Audio Extract: {filename}", task, estimated_seconds=est_seconds, local_widget=self.exec_single_btn)
         self.orchestrator.show_status_message(f"⏳ Extraction task queued for: {filename}")
 
     # =========================================================================
@@ -192,7 +192,7 @@ class AudioExtractorUI(QWidget):
         def task():
             return self.extractor.extract_folder(folder, output_format=fmt, track_id=track_id)
 
-        self.orchestrator.add_background_job(f"Mass Harvester: {foldername}", task, estimated_seconds=est_seconds)
+        self.orchestrator.add_background_job(f"Mass Harvester: {foldername}", task, estimated_seconds=est_seconds, local_widget=self.exec_batch_btn)
         self.orchestrator.show_status_message(f"⏳ Mass Harvester task queued for folder: {foldername}")
 
     # =========================================================================
@@ -263,7 +263,7 @@ class AudioExtractorUI(QWidget):
             success = transcriber.transcribe(video, output_srt, language=lang, model_name=model)
             return success, f"Transcription completed. Subtitle saved at: {output_srt}" if success else "Transcription failed."
 
-        self.orchestrator.add_background_job(f"Transcribe: {name}", task, estimated_seconds=est_seconds)
+        self.orchestrator.add_background_job(f"Transcribe: {name}", task, estimated_seconds=est_seconds, local_widget=self.exec_trans_btn)
         self.orchestrator.show_status_message(f"⏳ Transcription queued for: {name}")
 
 

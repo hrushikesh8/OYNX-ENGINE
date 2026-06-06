@@ -248,11 +248,9 @@ class DividerUI(QWidget):
     def execute_intermission(self, inputs, est_seconds):
         path, time_val = inputs
         print(f"\n--- Split Initiated at {time_val} ---")
-        success, p1, p2 = self.divider.split_at_intermission(path, time_val)
-        if success:
-            print(f"\n[SUCCESS] Split completed!\nFirst Half: {p1}\nSecond Half: {p2}")
-        else:
-            print(f"\n[ERROR] Split failed.")
+        def task():
+            return self.divider.split_at_intermission(path, time_val)
+        self.orchestrator.add_background_job(f"Intermission Split: {os.path.basename(path)}", task, estimated_seconds=est_seconds, local_widget=self.int_btn)
 
     def keyPressEvent(self, event):
         if self.tabs.currentIndex() == 0:  # Only if we are on the Intermission Cut tab
@@ -300,27 +298,25 @@ class DividerUI(QWidget):
         t_layout.addWidget(self.chunk_time)
         t_layout.addSpacing(25)
 
-        self.chunk_btn = QPushButton("✂️ Divide into Chunks (Lossless)")
-        self.chunk_btn.setMinimumHeight(60)
-        self.chunk_btn.setStyleSheet("background-color: #2D72D9; color: white; font-size: 16px; font-weight: bold; border-radius: 8px;")
-        self.chunk_btn.clicked.connect(self.run_chunks)
+        self.chunk_btn = SmartRunButton("✂️ Divide into Chunks (Lossless)", self.get_chunk_inputs, self.execute_chunks)
         t_layout.addWidget(self.chunk_btn)
         t_layout.addStretch()
 
         self.tabs.addTab(tab, "🧩 Chunk Divider")
 
-    def run_chunks(self):
+    def get_chunk_inputs(self):
         path = self.chunk_drop.file_input.text().strip()
         time_val = self.chunk_time.text().strip()
         if not path or not time_val:
-            return
+            return None
+        return path, time_val
 
+    def execute_chunks(self, inputs, est_seconds):
+        path, time_val = inputs
         filename = os.path.basename(path)
         def task():
             return self.divider.split_by_chunks(path, time_val)
-
-        self.orchestrator.add_background_job(f"Chunk Split: {filename}", task)
-        self.orchestrator.show_status_message(f"⏳ Chunk Split queued for: {filename}")
+        self.orchestrator.add_background_job(f"Chunk Split: {filename}", task, estimated_seconds=est_seconds, local_widget=self.chunk_btn)
 
     # =========================================================================
     # TAB 3: 9:16 SHORTS CREATOR
@@ -335,30 +331,27 @@ class DividerUI(QWidget):
         t_layout.addWidget(self.shorts_drop)
         t_layout.addSpacing(25)
 
-        self.shorts_btn = QPushButton("📱 Convert to Vertical 9:16 Short (Re-encode)")
-        self.shorts_btn.setMinimumHeight(60)
-        self.shorts_btn.setStyleSheet("background-color: #2D72D9; color: white; font-size: 16px; font-weight: bold; border-radius: 8px;")
-        self.shorts_btn.clicked.connect(self.run_shorts)
+        self.shorts_btn = SmartRunButton("📱 Convert to Vertical 9:16 Short (Re-encode)", self.get_shorts_inputs, self.execute_shorts)
         t_layout.addWidget(self.shorts_btn)
         t_layout.addStretch()
 
         self.tabs.addTab(tab, "📱 9:16 Shorts Creator")
 
-    def run_shorts(self):
+    def get_shorts_inputs(self):
         path = self.shorts_drop.file_input.text().strip()
         if not path:
-            return
+            return None
+        return path
 
+    def execute_shorts(self, inputs, est_seconds):
+        path = inputs
         base_dir = os.path.dirname(path)
         filename = os.path.basename(path)
         name, ext = os.path.splitext(filename)
         output_path = os.path.join(base_dir, f"{name}_shorts{ext}")
-
         def task():
             return self.editor.convert_to_shorts_style(path, output_path)
-
-        self.orchestrator.add_background_job(f"9:16 Short: {name}", task)
-        self.orchestrator.show_status_message(f"⏳ Shorts Creator queued for: {filename}")
+        self.orchestrator.add_background_job(f"9:16 Short: {name}", task, estimated_seconds=est_seconds, local_widget=self.shorts_btn)
 
     # =========================================================================
     # TAB 4: SILENCE REMOVER (AUTO-TRIM)
@@ -393,36 +386,29 @@ class DividerUI(QWidget):
         t_layout.addWidget(self.sil_dur)
         t_layout.addSpacing(25)
 
-        self.sil_btn = QPushButton("🔇 Auto-Trim Silent Intervals (Lossless Concat)")
-        self.sil_btn.setMinimumHeight(60)
-        self.sil_btn.setStyleSheet("background-color: #00ff66; color: #111; font-size: 16px; font-weight: bold; border-radius: 8px;")
-        self.sil_btn.clicked.connect(self.run_silence)
+        self.sil_btn = SmartRunButton("🔇 Auto-Trim Silent Intervals (Lossless Concat)", self.get_silence_inputs, self.execute_silence)
         t_layout.addWidget(self.sil_btn)
         t_layout.addStretch()
 
         self.tabs.addTab(tab, "🔇 Silence Remover")
 
-    def run_silence(self):
+    def get_silence_inputs(self):
         path = self.sil_drop.file_input.text().strip()
-        noise = self.threshold_slider.value()
-        try:
-            dur = float(self.sil_dur.text().strip())
-        except ValueError:
-            dur = 0.5
+        db = str(self.threshold_slider.value())
+        dur = self.sil_dur.text().strip()
+        if not path or not db or not dur:
+            return None
+        return path, db, dur
 
-        if not path:
-            return
-
-        base_dir = os.path.dirname(path)
+    def execute_silence(self, inputs, est_seconds):
+        path, db, dur = inputs
         filename = os.path.basename(path)
         name, ext = os.path.splitext(filename)
-        output_path = os.path.join(base_dir, f"{name}_trimmed{ext}")
-
+        output_path = os.path.join(os.path.dirname(path), f"{name}_trimmed{ext}")
+        
         def task():
-            return self.silence_remover.remove_silence(path, output_path, noise_db=noise, min_silence_len=dur)
-
-        self.orchestrator.add_background_job(f"Auto-Trim: {name}", task)
-        self.orchestrator.show_status_message(f"⏳ Silence Remover task queued for: {filename}")
+            return self.divider.auto_trim_silence(path, output_path, db, dur)
+        self.orchestrator.add_background_job(f"Auto-Trim: {name}", task, estimated_seconds=est_seconds, local_widget=self.sil_btn)
 
 
 # ==========================================

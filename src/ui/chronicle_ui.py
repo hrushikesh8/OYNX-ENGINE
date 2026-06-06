@@ -256,32 +256,38 @@ class ChronicleUI(QWidget):
         if mode == "execute":
             self.orchestrator.add_background_job(
                 "Chronicle Execution",
-                lambda: organize_and_rename(folder_path, show_name, None, None, dry_run=False, run_id=run_id)
+                lambda: organize_and_rename(folder_path, show_name, None, None, dry_run=False, run_id=run_id),
+                local_widget=self.run_btn
             )
         elif mode == "simulate":
             self.orchestrator.add_background_job(
                 "Chronicle Simulation",
-                lambda: organize_and_rename(folder_path, show_name, None, None, dry_run=True, run_id=None)
+                lambda: organize_and_rename(folder_path, show_name, None, None, dry_run=True, run_id=None),
+                local_widget=self.run_btn
             )
         elif mode == "audit":
             self.orchestrator.add_background_job(
                 "Chronicle Audit",
-                lambda: audit_missing_episodes(folder_path, show_name, None, None)
+                lambda: audit_missing_episodes(folder_path, show_name, None, None),
+                local_widget=self.run_btn
             )
         elif mode == "omni":
             self.orchestrator.add_background_job(
                 "Omni-Dump",
-                lambda: process_omni_dump(folder_path, dry_run=False, run_id=run_id)
+                lambda: process_omni_dump(folder_path, dry_run=False, run_id=run_id),
+                local_widget=self.run_btn
             )
         elif mode == "scavenge":
             self.orchestrator.add_background_job(
                 "Deep Scavenger",
-                lambda: flatten_directory(folder_path, run_id=run_id)
+                lambda: flatten_directory(folder_path, run_id=run_id),
+                local_widget=self.run_btn
             )
         elif mode == "pack":
             self.orchestrator.add_background_job(
                 "Volume Packer",
-                lambda: pack_volumes(folder_path, show_name, max_size_gb=2.0, run_id=run_id)
+                lambda: pack_volumes(folder_path, show_name, max_size_gb=2.0, run_id=run_id),
+                local_widget=self.run_btn
             )
 
 

@@ -151,7 +151,7 @@ class StreamMergerUI(QWidget):
                     self.engine.mux_subtitles(v_path, e_path, output)
                 return True, f"Sync completed successfully. Saved to: {output}"
             
-            self.orchestrator.add_background_job(f"Mux Single: {filename}", task, estimated_seconds=est_seconds)
+            self.orchestrator.add_background_job(f"Mux Single: {filename}", task, estimated_seconds=est_seconds, local_widget=self.exec_btn)
             self.orchestrator.show_status_message(f"⏳ Single Muxing job queued for: {filename}")
             
         else:
@@ -166,7 +166,7 @@ class StreamMergerUI(QWidget):
                 self.engine.batch_smart_sync(folder, self.mode)
                 return True, f"Smart Folder sync finished for: {folder}"
                 
-            self.orchestrator.add_background_job(f"Mux Folder: {foldername}", task, estimated_seconds=est_seconds)
+            self.orchestrator.add_background_job(f"Mux Folder: {foldername}", task, estimated_seconds=est_seconds, local_widget=self.exec_btn)
             self.orchestrator.show_status_message(f"⏳ Smart Folder Mux job queued for: {foldername}")
 
 # ==========================================

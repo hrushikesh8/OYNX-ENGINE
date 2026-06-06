@@ -116,7 +116,7 @@ class TrackCleanerUI(QWidget):
             self.processor.process_batch(input_path, keep_ids, self.mode)
             return True, f"Track purge finished successfully for: {filename}"
 
-        self.orchestrator.add_background_job(f"Purge {track_type} Tracks: {filename}", task, estimated_seconds=est_seconds)
+        self.orchestrator.add_background_job(f"Purge {track_type} Tracks: {filename}", task, estimated_seconds=est_seconds, local_widget=self.exec_btn)
         self.orchestrator.show_status_message(f"⏳ Purge job queued for: {filename}")
 
 # ==========================================

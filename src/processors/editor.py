@@ -16,7 +16,7 @@ class VideoEditor:
         # 3. Overlays the sharp video on top of the blurred background.
         filter_cmd = (
             "split[a][b];"
-            "[a]scale=1080:1920:force_original_aspect_ratio=increase,boxblur=20:20[bg];"
+            "[a]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=20:20[bg];"
             "[b]scale=1080:-2[fg];"
             "[bg][fg]overlay=(W-w)/2:(H-h)/2"
         )

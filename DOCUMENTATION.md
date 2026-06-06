@@ -7,7 +7,7 @@ This document provides a comprehensive explanation of the internal workings, pro
 The Onyx Engine follows a decoupled architecture, separating the **Frontend (UI)** from the **Backend (Processors)**.
 
 1.  **Frontend (`gui_main.py` & `src/ui/`)**: Built using PyQt6. It handles all user interactions, file drag-and-drops, configuration selections, and visual feedback (Progress Bars, ETAs). It manages a `QStackedWidget` to seamlessly switch between different tool screens.
-2.  **Backend (`src/processors/`)**: A collection of isolated Python modules. Each module is responsible for constructing precise, complex FFmpeg/FFprobe commands based on the parameters passed from the UI.
+2.  **Backend (`src/processors/`)**: A collection of isolated Python modules. Each module is responsible for constructing precise, complex FFmpeg/FFprobe commands based on the parameters passed from the UI. Features strict type safety (`Type | None`) and robust null handling to prevent crashes.
 3.  **The Execution Layer**: UI components spawn backend processor commands asynchronously using `subprocess.Popen` or `QProcess`. The standard output/error streams are parsed in real-time to extract timecodes and progress, feeding this data back to the UI to update progress bars and ETAs.
 
 ---
@@ -65,6 +65,7 @@ When a long-running FFmpeg task is launched, the UI cannot freeze.
 3.  A regular expression in the Python code parses this timecode and converts it to seconds.
 4.  By comparing the processed seconds to the total known duration of the video, a completion percentage is calculated.
 5.  A timer tracks how long the process has been running, calculating the processing speed (seconds of video processed per second of real-time) to estimate the Remaining Time (ETA).
+6.  **Universal Inline Progress Bars:** These real-time percentage updates are now mapped directly to the triggering widget via the `local_widget` attribute, dynamically filling the execution button with a visual progress indicator and signaling completion (green) or failure (red).
 
 ### Task Cancellation
 The UI features a prominent "Cancel" button during processing. Clicking this sends a termination signal (`SIGTERM` or Windows `taskkill`) to the underlying FFmpeg subprocess. The temporary or half-finished output files are then gracefully handled or deleted, returning the user to the starting state immediately.

@@ -540,14 +540,15 @@ class MasterOrchestrator(QMainWindow):
     # CENTRAL BACKGROUND JOB QUEUE SYSTEM
     # =========================================================================
 
-    def add_background_job(self, name, func_or_cmd, estimated_seconds=0):
+    def add_background_job(self, name, func_or_cmd, estimated_seconds=0, local_widget=None):
         """Queues a task or command list for execution in background thread."""
         job = {
             "name": name,
             "status": "Queued",
             "func_or_cmd": func_or_cmd,
             "worker": None,
-            "est_seconds": estimated_seconds
+            "est_seconds": estimated_seconds,
+            "local_widget": local_widget
         }
         self.job_queue.append(job)
         self.append_log(f"📥 [Queue] Task added: {name}\n")
@@ -616,6 +617,9 @@ class MasterOrchestrator(QMainWindow):
                 self.global_progress_bar.setValue(pct)
                 self.global_progress_bar.show()
                 self.global_cancel_btn.show()
+                
+                if job.get("local_widget") and hasattr(job["local_widget"], "update_progress"):
+                    job["local_widget"].update_progress(pct, txt)
                 break
         current_w = self.workspace.currentWidget()
         if hasattr(current_w, "on_job_progress"):
@@ -651,7 +655,13 @@ class MasterOrchestrator(QMainWindow):
                 job["status"] = "Completed" if success else "Failed"
                 status_symbol = "✅" if success else "❌"
                 self.append_log(f"\n{status_symbol} [Finished] {job['name']} - Result: {msg}\n\n")
-                self.show_status_message(f"Task Finished: {job['name']}")
+                if success:
+                    self.show_status_message(f"Task Finished: {job['name']}")
+                else:
+                    self.show_status_message(f"Task Failed/Interrupted: {job['name']}")
+                
+                if job.get("local_widget") and hasattr(job["local_widget"], "mark_finished"):
+                    job["local_widget"].mark_finished(success, msg)
                 break
         current_w = self.workspace.currentWidget()
         if hasattr(current_w, "on_job_finished"):
@@ -684,6 +694,8 @@ class MasterOrchestrator(QMainWindow):
                     job["worker"].wait(2000) # Short wait timeout
                 job["status"] = "Failed"
                 self.append_log("🔴 [Engine] Task terminated.\n")
+                if job.get("local_widget") and hasattr(job["local_widget"], "mark_finished"):
+                    job["local_widget"].mark_finished(False, "Task terminated.")
                 self.process_next_job()
             else:
                 self.job_queue.pop(idx)

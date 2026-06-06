@@ -153,7 +153,7 @@ class StreamLadderUI(QWidget):
         def run_profile_task():
             return self.ladder_engine.generate_profiles(master, out_dir, self.selected_profiles)
 
-        self.orchestrator.add_background_job(f"ABR Ladder: {filename}", run_profile_task, estimated_seconds=est_seconds)
+        self.orchestrator.add_background_job(f"ABR Ladder: {filename}", run_profile_task, estimated_seconds=est_seconds, local_widget=self.run_btn)
         self.orchestrator.show_status_message(f"⏳ ABR Ladder task queued for: {filename}")
 
     # =========================================================================
