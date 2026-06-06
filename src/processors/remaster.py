@@ -36,7 +36,7 @@ class VideoRemaster:
         
         # Security Check: Ensure the AI binary exists prior to initiating heavy AI workflows.
         if not os.path.exists(self.ai_bin):
-            print(f"❌ Critical Error: AI Engine not found at {self.ai_bin}")
+            print(f" Critical Error: AI Engine not found at {self.ai_bin}")
             print("Please ensure 'realesrgan-ncnn-vulkan.exe' is in your /bin folder.")
             return False
 
@@ -54,9 +54,9 @@ class VideoRemaster:
         ]
 
         try:
-            print(f"✨ VidFlow Remaster Service: Initializing AI...")
-            print(f"🚀 Processing: {os.path.basename(input_path)} -> Upscaling x{scale}")
-            print("💎 Analyzing and reconstructing frames. This may take some time...")
+            print(f" VidFlow Remaster Service: Initializing AI...")
+            print(f" Processing: {os.path.basename(input_path)} -> Upscaling x{scale}")
+            print(" Analyzing and reconstructing frames. This may take some time...")
             
             # Execute the portable AI binary synchronously.
             # Output is intentionally not captured to allow real-time console rendering updates.
@@ -65,10 +65,10 @@ class VideoRemaster:
             
         except subprocess.CalledProcessError as e:
             # Gracefully handle subprocess failures without crashing the parent application thread.
-            print(f"❌ AI Remastering Failed: {e}")
+            print(f" AI Remastering Failed: {e}")
             return False
         except Exception as e:
-            print(f"❌ An unexpected error occurred: {e}")
+            print(f" An unexpected error occurred: {e}")
             return False
 
 # --- STANDALONE EXECUTION LOGIC ---
@@ -88,10 +88,10 @@ if __name__ == "__main__":
     engine = VideoRemaster()
     if engine.enhance_old_footage(input_file, output_file):
         print("-" * 50)
-        print(f"✅ SUCCESS: {output_file} is ready.")
+        print(f" SUCCESS: {output_file} is ready.")
         print("-" * 50)
     else:
-        print("❌ Remastering process aborted.")
+        print(" Remastering process aborted.")
 
 # ==========================================
 # HOW TO USE THIS CODE (EXAMPLE)

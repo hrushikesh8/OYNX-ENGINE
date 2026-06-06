@@ -32,7 +32,7 @@ class MetadataEditor:
             return data.get('format', {}).get('tags', {})
         except Exception as e:
             # Isolate FFprobe read failures without bubbling the exception to the UI
-            print(f"❌ Error reading metadata tags: {e}")
+            print(f" Error reading metadata tags: {e}")
             return {}
 
     def write_metadata(self, input_path: str, output_path: str, tags: dict) -> list:

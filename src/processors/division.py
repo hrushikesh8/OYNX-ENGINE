@@ -6,7 +6,7 @@ from src.processors.settings_manager import SettingsManager
 from src.processors.time_machine import TimeMachine
 
 class VideoDivider:
-    def split_by_chunks(self, input_path: str, segment_time: str, run_id: str = None):
+    def split_by_chunks(self, input_path: str, segment_time: str, run_id: str | None = None):
         """
         Splits video into multiple equal chunks (e.g., for WhatsApp Status).
         segment_time can be seconds ('30') or HH:MM:SS ('00:00:30').
@@ -29,7 +29,7 @@ class VideoDivider:
         ] + maps + [
             '-c', 'copy', 
             '-f', 'segment',                  # Engage the segment muxer to split the file dynamically based on time.
-            '-segment_time', str(segment_time), 
+            '-segment_time', segment_time, 
             '-reset_timestamps', '1',         # Recalculate PTS (Presentation Time Stamp) for each individual chunk.
             '-avoid_negative_ts', 'make_zero', 
             '-ignore_unknown', 
@@ -37,7 +37,7 @@ class VideoDivider:
         ]
         
         try:
-            print(f"✂️  VidFlow Division: Dividing into chunks of {segment_time}...")
+            print(f"  VidFlow Division: Dividing into chunks of {segment_time}...")
             # Capture standard output and error to prevent CLI spam while ensuring errors are identifiable via CalledProcessError.
             subprocess.run(command, check=True, capture_output=True)
             
@@ -49,10 +49,10 @@ class VideoDivider:
             
             return True
         except subprocess.CalledProcessError as e:
-            print(f"❌ Error: {e.stderr.decode('utf-8')}")
+            print(f" Error: {e.stderr.decode('utf-8')}")
             return False
 
-    def split_at_intermission(self, input_path: str, split_time: str, run_id: str = None):
+    def split_at_intermission(self, input_path: str, split_time: str, run_id: str | None = None):
         """
         Splits a video into exactly two parts at the specified timestamp.
         split_time can be seconds ('3600') or HH:MM:SS ('01:00:00').
@@ -67,14 +67,14 @@ class VideoDivider:
 
         try:
             # --- PART 1 GENERATION ---
-            print(f"✂️  Generating Part 1 (Start -> {split_time})...")
+            print(f"  Generating Part 1 (Start -> {split_time})...")
             # Uses -to for precise ending point.
             # 🚀 UPGRADE: Conditionally apply subtitle safeguard
             maps = ['-map', '0:v', '-map', '0:a?'] if SettingsManager.should_safeguard_subtitles() else ['-map', '0']
             
             cmd1 = [
                 'ffmpeg', '-i', input_path, 
-                '-to', str(split_time), 
+                '-to', split_time, 
             ] + maps + [
                 '-c', 'copy', 
                 '-avoid_negative_ts', 'make_zero', 
@@ -83,10 +83,10 @@ class VideoDivider:
             subprocess.run(cmd1, check=True, capture_output=True)
 
             # --- PART 2 GENERATION ---
-            print(f"✂️  Generating Part 2 ({split_time} -> End)...")
+            print(f"  Generating Part 2 ({split_time} -> End)...")
             # Uses -ss BEFORE -i for the fastest input-seeking to the second half, snapping to the nearest I-frame.
             cmd2 = [
-                'ffmpeg', '-ss', str(split_time), 
+                'ffmpeg', '-ss', split_time, 
                 '-i', input_path, 
             ] + maps + [
                 '-c', 'copy', 
@@ -102,13 +102,13 @@ class VideoDivider:
             
             return True, out1, out2
         except subprocess.CalledProcessError as e:
-            print(f"❌ Error: {e.stderr.decode('utf-8')}")
+            print(f" Error: {e.stderr.decode('utf-8')}")
             return False, None, None
 
 # --- STANDALONE EXECUTION LOGIC ---
 if __name__ == "__main__":
     if len(sys.argv) < 3:
-        print("❌ Error: Missing arguments.")
+        print(" Error: Missing arguments.")
         print("Usage: python division.py <file> <mode:chunk|cut> [time]")
         sys.exit(1)
 
@@ -121,12 +121,12 @@ if __name__ == "__main__":
 
     if mode == "chunk":
         if divider.split_by_chunks(path, time_val):
-            print("✅ Chunk division complete.")
+            print(" Chunk division complete.")
 
     elif mode == "cut":
         success, p1, p2 = divider.split_at_intermission(path, time_val)
         if success:
-            print(f"✅ Cut Complete:\n   Part 1: {p1}\n   Part 2: {p2}")
+            print(f" Cut Complete:\n   Part 1: {p1}\n   Part 2: {p2}")
 
 # ==========================================
 # HOW TO USE THIS CODE (EXAMPLE)

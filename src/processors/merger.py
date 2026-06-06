@@ -13,7 +13,7 @@ class StreamMerger:
     # ==========================================
     def merge_video_audio(self, video_path: str, audio_path: str, output_path: str):
         """Combines visuals with a separate audio file instantly."""
-        print(f"   🔗 VidFlow Merger: {os.path.basename(video_path)} + {os.path.basename(audio_path)}")
+        print(f"    VidFlow Merger: {os.path.basename(video_path)} + {os.path.basename(audio_path)}")
         
         # FFmpeg Multiplexing Engine:
         # Assembles distinct A/V streams into a unified container dynamically.
@@ -37,7 +37,7 @@ class StreamMerger:
 
     def mux_subtitles(self, video_path: str, sub_path: str, output_path: str):
         """Embeds a subtitle file into a video container."""
-        print(f"   📝 Muxing Subs: {os.path.basename(video_path)} + {os.path.basename(sub_path)}")
+        print(f"    Muxing Subs: {os.path.basename(video_path)} + {os.path.basename(sub_path)}")
 
         # FFmpeg Subtitle Encapsulation:
         # Injects textual data streams (soft subs) into the video container without burning them into the video frames.
@@ -80,10 +80,10 @@ class StreamMerger:
         Scans a folder and automatically pairs/muxes files with identical names.
         """
         if not os.path.exists(target_folder):
-            print(f"❌ Error: Path not found -> {target_folder}")
+            print(f" Error: Path not found -> {target_folder}")
             return False
 
-        print(f"\n📂 Onyx Batch Merger Scanning: {target_folder}")
+        print(f"\n Onyx Batch Merger Scanning: {target_folder}")
         files = os.listdir(target_folder)
         success_count = 0
 
@@ -117,9 +117,9 @@ class StreamMerger:
 
         print("-" * 50)
         if success_count > 0:
-            print(f"🎉 BATCH COMPLETE: {success_count} files successfully processed.")
+            print(f" BATCH COMPLETE: {success_count} files successfully processed.")
         else:
-            print("⚠️ No matching pairs found. (Ensure filenames match perfectly!)")
+            print(" No matching pairs found. (Ensure filenames match perfectly!)")
         print("-" * 50)
         return True
 

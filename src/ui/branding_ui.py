@@ -168,6 +168,8 @@ class BrandingUI(QWidget):
 
     def run_remover(self, inputs, est_seconds):
         path = self.get_rem_input()
+        if not path:
+            return
 
         # Step 1: Open ROI selector window on main thread (OpenCV GUI must run on main thread)
         coords = get_watermark_coords(path)

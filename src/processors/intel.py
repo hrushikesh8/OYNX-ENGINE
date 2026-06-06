@@ -26,11 +26,11 @@ class MediaIntel:
         """
         
         if not os.path.exists(input_path):
-            print(f"❌ Error: File not found -> {input_path}")
+            print(f" Error: File not found -> {input_path}")
             return False
 
-        print(f"🧠 VidFlow Intel Service: Analyzing Scene Architecture...")
-        print(f"🎬 Target: {os.path.basename(input_path)}")
+        print(f" VidFlow Intel Service: Analyzing Scene Architecture...")
+        print(f" Target: {os.path.basename(input_path)}")
         
         # FFmpeg 'scdet' (Scene Detect) Filter Configuration:
         # 'gt(scene,0.4)' evaluates inter-frame luminance and chrominance deviations.
@@ -43,7 +43,7 @@ class MediaIntel:
         ]
 
         try:
-            print("💎 Identifying scene cuts and generating timestamps. Please wait...")
+            print(" Identifying scene cuts and generating timestamps. Please wait...")
             
             # We capture standard error natively since FFmpeg routes all filter metadata output to stderr.
             result = subprocess.run(command, check=True, capture_output=True, text=True)
@@ -53,19 +53,19 @@ class MediaIntel:
             timestamps = re.findall(r'pts_time:(\d+\.\d+)', result.stderr)
             
             if timestamps:
-                print(f"✅ Detection Complete: Found {len(timestamps)} major scene transitions.")
+                print(f" Detection Complete: Found {len(timestamps)} major scene transitions.")
                 # For now, we print them; in full automation, these go to a .json file
-                print(f"📌 Key Chapters detected at: {', '.join(timestamps[:5])}...") 
+                print(f" Key Chapters detected at: {', '.join(timestamps[:5])}...") 
                 return True
             else:
-                print("⚠️ Analysis finished, but no significant scene changes were found.")
+                print(" Analysis finished, but no significant scene changes were found.")
                 return True
 
         except subprocess.CalledProcessError as e:
-            print(f"❌ Intelligence Extraction Failed: {e}")
+            print(f" Intelligence Extraction Failed: {e}")
             return False
         except Exception as e:
-            print(f"❌ Unexpected Error: {e}")
+            print(f" Unexpected Error: {e}")
             return False
 
 # --- STANDALONE EXECUTION LOGIC ---
@@ -83,10 +83,10 @@ if __name__ == "__main__":
     # Run standalone test
     if engine.analyze_and_chapter(input_file):
         print("-" * 50)
-        print(f"🎉 Intelligence report generated for {os.path.basename(input_file)}")
+        print(f" Intelligence report generated for {os.path.basename(input_file)}")
         print("-" * 50)
     else:
-        print("❌ Failed to analyze media structure.")
+        print(" Failed to analyze media structure.")
 
 # ==========================================
 # HOW TO USE THIS CODE (EXAMPLE)

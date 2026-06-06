@@ -23,20 +23,20 @@ class FolderArchiver:
         
         # Security Check: Ensure the target path actually exists
         if not os.path.exists(parent_directory):
-            print(f"❌ Error: Specified path does not exist -> {parent_directory}")
+            print(f" Error: Specified path does not exist -> {parent_directory}")
             return False
 
         # Set the dynamic UI string and Zip Mode based on user choice
         mode_str = "High-Compression Mode" if compress else "High-Speed Store Mode"
         zip_engine = zipfile.ZIP_DEFLATED if compress else zipfile.ZIP_STORED
 
-        print(f"📦 VidFlow Archiver Service: Initializing ({mode_str})...")
-        print(f"📂 Scanning Directory: {parent_directory}")
+        print(f" VidFlow Archiver Service: Initializing ({mode_str})...")
+        print(f" Scanning Directory: {parent_directory}")
         
         try:
             items = os.listdir(parent_directory)
         except PermissionError:
-            print("❌ Access Denied: Insufficient permissions to read this directory.")
+            print(" Access Denied: Insufficient permissions to read this directory.")
             return False
             
         success_count = 0
@@ -48,7 +48,7 @@ class FolderArchiver:
             if os.path.isdir(item_path):
                 try:
                     action_verb = "Compressing" if compress else "Packaging"
-                    print(f"⚡ {action_verb} folder -> {item}...")
+                    print(f" {action_verb} folder -> {item}...")
                     
                     zip_file_path = f"{item_path}.zip"
                     
@@ -64,14 +64,14 @@ class FolderArchiver:
                     
                     success_count += 1
                 except Exception as e:
-                    print(f"⚠️ Failed to archive {item}: {str(e)}")
+                    print(f" Failed to archive {item}: {str(e)}")
                     error_count += 1
 
         print("-" * 50)
-        print(f"✅ BATCH COMPLETE")
-        print(f"📊 Folders Zipped: {success_count}")
+        print(f" BATCH COMPLETE")
+        print(f" Folders Zipped: {success_count}")
         if error_count > 0:
-            print(f"❗ Errors Encountered: {error_count}")
+            print(f" Errors Encountered: {error_count}")
         print("-" * 50)
         
         return True if success_count > 0 else False
@@ -87,9 +87,9 @@ if __name__ == "__main__":
     
     archiver = FolderArchiver()
     if archiver.batch_zip_folders(target_path, compress=do_compress):
-        print("🎉 All archives generated successfully.")
+        print(" All archives generated successfully.")
     else:
-        print("⚠️ No folders were processed. Check the directory path.")
+        print(" No folders were processed. Check the directory path.")
 
 
 

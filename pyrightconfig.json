@@ -1,0 +1,15 @@
+{
+    "venvPath": ".",
+    "venv": "venv",
+    "extraPaths": ["."],
+    "executionEnvironments": [
+        {
+            "root": "."
+        }
+    ],
+    "reportIncompatibleMethodOverride": "none",
+    "reportOptionalMemberAccess": "none",
+    "reportAttributeAccessIssue": "none",
+    "reportArgumentType": "none",
+    "reportCallIssue": "none"
+}

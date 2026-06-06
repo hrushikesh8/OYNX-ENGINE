@@ -20,12 +20,12 @@ class VideoStabilizerProcessor:
         base_dir = os.path.dirname(output_path)
         trf_file = os.path.join(base_dir, "transforms.trf")
         
-        print(f"🎬 Initializing 2-Pass Video Stabilization for: {os.path.basename(input_path)}")
+        print(f" Initializing 2-Pass Video Stabilization for: {os.path.basename(input_path)}")
         
         # Pass 1: Motion Vector Analysis
         # Utilizes the vidstabdetect filter to compute affine transformations between adjacent frames.
         # Data is serialized into a .trf coordinate matrix file rather than modifying the video.
-        print("🔍 Pass 1/2: Analyzing camera movement vectors...")
+        print(" Pass 1/2: Analyzing camera movement vectors...")
         pass1_cmd = [
             'ffmpeg', '-y',
             '-i', input_path,
@@ -36,7 +36,7 @@ class VideoStabilizerProcessor:
         try:
             subprocess.run(pass1_cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
         except subprocess.CalledProcessError as e:
-            print(f"❌ Pass 1 analysis failed: {str(e)}")
+            print(f" Pass 1 analysis failed: {str(e)}")
             if os.path.exists(trf_file):
                 try: os.remove(trf_file)
                 except Exception: pass
@@ -45,7 +45,7 @@ class VideoStabilizerProcessor:
         # Pass 2: Matrix Transformation & Frame Synthesis
         # Executes vidstabtransform by reading the .trf matrix.
         # Applies a Low-Pass Filter (smoothing factor) and bilinear interpolation to eliminate micro-jitter.
-        print("🎥 Pass 2/2: Synthesizing stabilized video frames...")
+        print(" Pass 2/2: Synthesizing stabilized video frames...")
         pass2_cmd = [
             'ffmpeg', '-y',
             '-i', input_path,
@@ -60,10 +60,10 @@ class VideoStabilizerProcessor:
         
         try:
             subprocess.run(pass2_cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
-            print(f"✅ Stabilization complete! Saved output at: {output_path}")
+            print(f" Stabilization complete! Saved output at: {output_path}")
             return True
         except subprocess.CalledProcessError as e:
-            print(f"❌ Pass 2 smoothing failed: {str(e)}")
+            print(f" Pass 2 smoothing failed: {str(e)}")
             return False
         finally:
             # Clean up the temporary transforms.trf file

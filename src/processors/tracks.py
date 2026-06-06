@@ -33,26 +33,26 @@ class TrackProcessor:
         
         # 1. Detect if it's a folder or a single file
         if os.path.isdir(input_path):
-            print(f"📂 Scanning folder for videos...")
+            print(f" Scanning folder for videos...")
             for ext in ['*.mkv', '*.mp4', '*.avi']:
                 tasks.extend(glob.glob(os.path.join(input_path, '**', ext), recursive=True))
         elif os.path.isfile(input_path):
             tasks = [input_path]
         else:
-            print("❌ Invalid path provided.")
+            print(" Invalid path provided.")
             return False
 
         if not tasks:
-            print("❌ No videos found.")
+            print(" No videos found.")
             return False
 
-        print(f"🚀 Processing {len(tasks)} files...")
+        print(f" Processing {len(tasks)} files...")
         print("-" * 40)
         
         success_count = 0
         
         for vid in tasks:
-            print(f"   ⏳ Cleaning {label.capitalize()}: {os.path.basename(vid)}")
+            print(f"    Cleaning {label.capitalize()}: {os.path.basename(vid)}")
             out_path = os.path.splitext(vid)[0] + f"_clean_{label}.mkv"
             
             # --- DYNAMIC STREAM ROUTING ---
@@ -78,10 +78,10 @@ class TrackProcessor:
             
             try:
                 subprocess.run(command, check=True, capture_output=True)
-                print(f"   ✅ Saved: {os.path.basename(out_path)}")
+                print(f"    Saved: {os.path.basename(out_path)}")
                 success_count += 1
             except subprocess.CalledProcessError as e:
-                print(f"   ❌ Failed: {os.path.basename(vid)}")
+                print(f"    Failed: {os.path.basename(vid)}")
 
         print("-" * 40)
         return success_count > 0

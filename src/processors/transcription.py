@@ -15,7 +15,7 @@ class AudioTranscriber:
         hours = int(seconds // 3600)
         minutes = int((seconds % 3600) // 60)
         secs = int(seconds % 60)
-        millis = int(round((seconds % 1) * 1000))
+        millis = round((seconds % 1) * 1000)
         if millis >= 1000:
             millis = 0
             secs += 1
@@ -27,14 +27,14 @@ class AudioTranscriber:
                     hours += 1
         return f"{hours:02d}:{minutes:02d}:{secs:02d},{millis:03d}"
 
-    def transcribe(self, input_video: str, output_srt: str, language: str = None, model_name: str = "tiny") -> bool:
+    def transcribe(self, input_video: str, output_srt: str, language: str | None = None, model_name: str = "tiny") -> bool:
         if not os.path.exists(input_video):
             print(f"[ERROR] Input video does not exist: {input_video}")
             return False
 
         # Generate a temporary 16kHz mono WAV file for clean speech recognition
         temp_audio = os.path.join(os.path.dirname(input_video), "temp_extract_voice.wav")
-        print(f"🔊 Extracting voice track to: {temp_audio}...")
+        print(f" Extracting voice track to: {temp_audio}...")
         
         # Step 1: Acoustic Stream Isolation
         # -vn: Purges the video stream to isolate the audio matrix.
@@ -59,20 +59,20 @@ class AudioTranscriber:
 
         try:
             # Attempt to use OpenAI Whisper library
-            import whisper
-            print(f"🧠 Loading Whisper AI model ({model_name}). Please wait...")
+            import whisper # type: ignore
+            print(f" Loading Whisper AI model ({model_name}). Please wait...")
             model = whisper.load_model(model_name)
             
             # Step 2: Natural Language Processing (NLP) Transcription
             # Executes the transcription inference utilizing the specified neural weight architecture.
-            print("🎙️ Running Speech-to-Text Transcription...")
+            print(" Running Speech-to-Text Transcription...")
             options = {}
             if language:
                 options["language"] = language
                 
             result = model.transcribe(temp_audio, **options)
             
-            print(f"📝 Writing subtitles to SRT: {output_srt}...")
+            print(f" Writing subtitles to SRT: {output_srt}...")
             with open(output_srt, "w", encoding="utf-8") as f:
                 for idx, segment in enumerate(result.get("segments", []), 1):
                     start_str = self.format_srt_timestamp(segment["start"])
@@ -83,16 +83,16 @@ class AudioTranscriber:
                     f.write(f"{start_str} --> {end_str}\n")
                     f.write(f"{text}\n\n")
             
-            print("🎉 Transcription complete!")
+            print(" Transcription complete!")
             return True
             
         except ImportError:
-            print("\n⚠️ [Whisper Missing] OpenAI Whisper package is not installed.")
-            print("💡 Running in offline mock/fallback mode.")
-            print("💡 To enable state-of-the-art AI speech-to-text, run: pip install openai-whisper")
+            print("\n [Whisper Missing] OpenAI Whisper package is not installed.")
+            print(" Running in offline mock/fallback mode.")
+            print(" To enable state-of-the-art AI speech-to-text, run: pip install openai-whisper")
             
             # Simple mock subtitle generator based on voice energy detection, or dummy dialogue for demo
-            print(f"📝 Generating fallback dialogue subtitles to SRT: {output_srt}...")
+            print(f" Generating fallback dialogue subtitles to SRT: {output_srt}...")
             with open(output_srt, "w", encoding="utf-8") as f:
                 dialogues = [
                     (0.0, 5.0, "[Music Intro] Welcome to Onyx Engine v3.0 Production Suite."),

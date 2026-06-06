@@ -133,7 +133,7 @@ class TimelineComposer:
     and multiple overlapping/delayed audio track overlays mixed dynamically.
     """
 
-    def compile_timeline(self, master_audio: str, clips: list, canvas_width: int, canvas_height: int, resize_mode: str, audio_mix_mode: str, master_volume: float, output_path: str, audio_overlays: list = None) -> bool:
+    def compile_timeline(self, master_audio: str, clips: list, canvas_width: int, canvas_height: int, resize_mode: str, audio_mix_mode: str, master_volume: float, output_path: str, audio_overlays: list | None = None) -> bool:
         """
         Compiles the B-roll overlay timeline.
         
@@ -167,14 +167,14 @@ class TimelineComposer:
                 }
         """
         if not clips:
-            print("❌ Error: No timeline clips provided to compile.")
+            print(" Error: No timeline clips provided to compile.")
             return False
 
         temp_files = []
         temp_dir = tempfile.gettempdir()
         
-        print(f"🎬 Onyx Timeline Composer: Initializing render ({len(clips)} clips)...")
-        print(f"📐 Target Resolution: {canvas_width}x{canvas_height} | Mode: {resize_mode.upper()} | Mix Mode: {audio_mix_mode.upper()}")
+        print(f" Onyx Timeline Composer: Initializing render ({len(clips)} clips)...")
+        print(f" Target Resolution: {canvas_width}x{canvas_height} | Mode: {resize_mode.upper()} | Mix Mode: {audio_mix_mode.upper()}")
 
         try:
             # Step 1: Trim, crop, resize, speed-adjust, color-grade, and standardize audio/video for each input clip
@@ -191,7 +191,7 @@ class TimelineComposer:
                 gamma = clip.get('gamma', 1.0)
                 
                 if not os.path.exists(clip_path):
-                    print(f"❌ Error: Clip not found -> {clip_path}")
+                    print(f" Error: Clip not found -> {clip_path}")
                     return False
                     
                 temp_segment_path = os.path.join(temp_dir, f"onyx_segment_{idx}_{os.path.basename(clip_path)}.mp4")
@@ -228,7 +228,7 @@ class TimelineComposer:
 
                 if is_image:
                     duration = clip.get('duration', 3.0)
-                    print(f"⚡ Processing Slide #{idx+1} [IMAGE]: {os.path.basename(clip_path)} | Dur: {duration}s | Crop: {crop_aspect}")
+                    print(f" Processing Slide #{idx+1} [IMAGE]: {os.path.basename(clip_path)} | Dur: {duration}s | Crop: {crop_aspect}")
                     
                     # Execute the lavfi (Libavfilter) generator.
                     # 'anullsrc' synthesizes a silent audio stream to satisfy container constraints for imagery.
@@ -250,7 +250,7 @@ class TimelineComposer:
                 else:
                     start = clip.get('start', '00:00:00.000')
                     end = clip.get('end', '00:00:00.000')
-                    print(f"⚡ Processing Segment #{idx+1} [VIDEO]: {os.path.basename(clip_path)} | Trim: {start} to {end} | Speed: {speed}x | Vol: {volume:.1f}")
+                    print(f" Processing Segment #{idx+1} [VIDEO]: {os.path.basename(clip_path)} | Trim: {start} to {end} | Speed: {speed}x | Vol: {volume:.1f}")
 
                     # Calculate segment output duration
                     dur_sec = (timecode_to_seconds(end) - timecode_to_seconds(start)) / speed
@@ -325,7 +325,7 @@ class TimelineComposer:
             temp_concat_video = os.path.join(temp_dir, "onyx_timeline_concat_out.mp4")
             temp_files.append(temp_concat_video)
 
-            print("🧵 Stitching segments into continuous video stream...")
+            print(" Stitching segments into continuous video stream...")
             concat_cmd = [
                 'ffmpeg', '-y',
                 '-f', 'concat',
@@ -364,7 +364,7 @@ class TimelineComposer:
                 })
 
             if valid_overlays and audio_mix_mode != 'keep_only':
-                print(f"🔊 Overlaying and mixing {len(valid_overlays)} background audio tracks...")
+                print(f" Overlaying and mixing {len(valid_overlays)} background audio tracks...")
                 
                 mux_cmd = ['ffmpeg', '-y', '-i', temp_concat_video]
                 for aud in valid_overlays:
@@ -411,23 +411,23 @@ class TimelineComposer:
                 subprocess.run(mux_cmd, check=True, startupinfo=startupinfo)
             else:
                 # Keep only clip audios or no background audio tracks are loaded
-                print("🔇 Retaining original clip audios only. Rendering final timeline output...")
+                print(" Retaining original clip audios only. Rendering final timeline output...")
                 import shutil
                 shutil.copy2(temp_concat_video, output_path)
 
-            print(f"🎉 RENDER COMPLETE! Output compiled successfully to: {output_path}")
+            print(f" RENDER COMPLETE! Output compiled successfully to: {output_path}")
             return True
 
         except subprocess.CalledProcessError as e:
-            print(f"❌ FFmpeg error during compilation: {str(e)}")
+            print(f" FFmpeg error during compilation: {str(e)}")
             return False
         except Exception as e:
-            print(f"❌ System error during timeline rendering: {str(e)}")
+            print(f" System error during timeline rendering: {str(e)}")
             return False
             
         finally:
             # Clean up all temporary files safely
-            print("🧹 Cleaning up temporary workspace files...")
+            print(" Cleaning up temporary workspace files...")
             for tf in temp_files:
                 if os.path.exists(tf):
                     try:

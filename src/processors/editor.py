@@ -7,7 +7,7 @@ from src.processors.settings_manager import SettingsManager
 from src.processors.time_machine import TimeMachine
 
 class VideoEditor:
-    def convert_to_shorts_style(self, input_path: str, output_path: str, run_id: str = None):
+    def convert_to_shorts_style(self, input_path: str, output_path: str, run_id: str | None = None):
         """Converts Landscape to Vertical (9:16) with blur background."""
         # --- ORIGINAL FILTER LOGIC (DO NOT MODIFY) ---
         # This creates the professional "Shorts" look:
@@ -32,16 +32,16 @@ class VideoEditor:
             '-y', output_path
         ]
         try:
-            print("⏳ VidFlow Editor: Processing Shorts conversion (this may take time)...")
+            print(" VidFlow Editor: Processing Shorts conversion (this may take time)...")
             subprocess.run(command, check=True, capture_output=True)
             if run_id:
                 TimeMachine.log_action("Shorts Editor", run_id, "CREATE_SHORTS", input_path, output_path, op_type="CREATE")
             return True
         except subprocess.CalledProcessError as e:
-            print(f"❌ Error: {e.stderr.decode()}")
+            print(f" Error: {e.stderr.decode()}")
             return False
 
-    def split_by_time(self, input_path: str, segment_time: int, run_id: str = None):
+    def split_by_time(self, input_path: str, segment_time: int, run_id: str | None = None):
         """Splits video into multiple chunks by seconds."""
         # --- ORIGINAL NAMING LOGIC ---
         filename = os.path.splitext(os.path.basename(input_path))[0]
@@ -58,7 +58,7 @@ class VideoEditor:
             '-y', output_pattern
         ]
         try:
-            print(f"✂️  VidFlow Editor: Splitting into {segment_time}s segments...")
+            print(f"  VidFlow Editor: Splitting into {segment_time}s segments...")
             subprocess.run(command, check=True, capture_output=True)
             
             if run_id:
@@ -83,15 +83,15 @@ if __name__ == "__main__":
     if mode == "shorts":
         out = os.path.splitext(path)[0] + "_shorts.mp4"
         if editor.convert_to_shorts_style(path, out):
-            print(f"✅ Created: {out}")
+            print(f" Created: {out}")
             
     elif mode == "split":
         if len(sys.argv) < 4:
-            print("❌ Split mode requires seconds argument.")
+            print(" Split mode requires seconds argument.")
         else:
             sec = int(sys.argv[3])
             if editor.split_by_time(path, sec):
-                print("✅ Split complete.")
+                print(" Split complete.")
 
 # ==========================================
 # HOW TO USE THIS CODE (EXAMPLE)

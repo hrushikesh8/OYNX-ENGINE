@@ -70,11 +70,13 @@ def run_suture_workflow(file_list, output_path, use_cv=True):
                 
                 # If there's a next file, check for overlap to set an 'outpoint'
                 if use_cv and i < len(file_list) - 1:
-                    match_idx, fps = find_overlap_match(file_list[i], file_list[i+1])
-                    if match_idx != -1:
-                        outpoint = match_idx / fps
-                        f.write(f"outpoint {outpoint}\n")
-                        print(f" -> Found seamless match at {outpoint:.2f}s")
+                    match_result = find_overlap_match(file_list[i], file_list[i+1])
+                    if match_result is not None:
+                        match_idx, fps = match_result
+                        if match_idx != -1:
+                            outpoint = match_idx / fps
+                            f.write(f"outpoint {outpoint}\n")
+                            print(f" -> Found seamless match at {outpoint:.2f}s")
 
         # 🚀 UPGRADE: Conditionally apply subtitle safeguard
         maps = ['-map', '0:v', '-map', '0:a?'] if SettingsManager.should_safeguard_subtitles() else ['-map', '0']

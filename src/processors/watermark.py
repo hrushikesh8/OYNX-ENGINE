@@ -36,19 +36,19 @@ class Watermarker:
         ]
 
         try:
-            print(f"💧 VidFlow Branding: Applying watermark to {os.path.basename(video_path)}...")
-            print(f"🎮 User Control: Positioning set to '{position.upper()}'")
+            print(f" VidFlow Branding: Applying watermark to {os.path.basename(video_path)}...")
+            print(f" User Control: Positioning set to '{position.upper()}'")
             # Re-encoding is necessary to burn the pixels into the video
             subprocess.run(command, check=True, capture_output=True)
             return True
         except subprocess.CalledProcessError as e:
-            print(f"❌ Error during watermarking: {e.stderr.decode()}")
+            print(f" Error during watermarking: {e.stderr.decode()}")
             return False
 
 # --- STANDALONE EXECUTION LOGIC ---
 if __name__ == "__main__":
     if len(sys.argv) < 4:
-        print("❌ VidFlow Error: Missing arguments.")
+        print(" VidFlow Error: Missing arguments.")
         print("-" * 30)
         print("Usage: python watermark.py <video_path> <logo_path> <position>")
         print("Available Positions:")
@@ -69,7 +69,7 @@ if __name__ == "__main__":
     
     wm = Watermarker()
     if wm.add_image_watermark(vid, img, out, pos):
-        print(f"✅ Branding Complete: {out}")
+        print(f" Branding Complete: {out}")
     def remove_watermark(self, video_path: str, output_path: str, x: int, y: int, w: int, h: int):
         """
         🚀 NEW: Removes a watermark using AI-style in-painting (delogo).
@@ -86,11 +86,11 @@ if __name__ == "__main__":
         ]
 
         try:
-            print(f"🧹 VidFlow Branding: Scrubbing watermark from {os.path.basename(video_path)}...")
+            print(f" VidFlow Branding: Scrubbing watermark from {os.path.basename(video_path)}...")
             subprocess.run(command, check=True, capture_output=True)
             return True
         except subprocess.CalledProcessError as e:
-            print(f"❌ Error during watermark removal: {e.stderr.decode()}")
+            print(f" Error during watermark removal: {e.stderr.decode()}")
             return False
 # ==========================================
 # HOW TO USE THIS CODE (EXAMPLE)

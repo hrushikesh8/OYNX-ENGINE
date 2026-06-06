@@ -36,9 +36,9 @@ if __name__ == "__main__":
     
     print(f"Compressing audio to {bitrate}...")
     if comp.compress_audio_maintain_video(path, out, bitrate):
-        print(f"✅ Finished: {out}")
+        print(f" Finished: {out}")
     else:
-        print("❌ Failed.")
+        print(" Failed.")
 
 # ==========================================
 # HOW TO USE THIS CODE (EXAMPLE)

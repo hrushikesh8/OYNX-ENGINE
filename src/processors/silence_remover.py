@@ -12,10 +12,11 @@ class SilenceRemover:
     """
     def remove_silence(self, input_path: str, output_path: str, noise_db: int = -35, min_silence_len: float = 0.5) -> bool:
         if not os.path.exists(input_path):
-            print("❌ Input path does not exist.")
+            print(" Input path does not exist.")
             return False
 
-        print(f"⚡ Detecting silent segments (Threshold: {noise_db}dB, Min Len: {min_silence_len}s)...")
+        list_file = None
+        print(f" Detecting silent segments (Threshold: {noise_db}dB, Min Len: {min_silence_len}s)...")
         # Step 1: Perform a high-speed audio-only analysis pass utilizing the internal 'silencedetect' graph filter.
         # Outputting to the 'null' muxer prevents writing a dummy file to disk during the analytical phase.
         cmd = [
@@ -43,7 +44,7 @@ class SilenceRemover:
                 if len(starts) > len(ends):
                     ends.append(total_duration)
                 else:
-                    print("⚠️ No silence detected or parsing mismatch. Outputting copy.")
+                    print(" No silence detected or parsing mismatch. Outputting copy.")
                     # Fallback copy
                     subprocess.run(['ffmpeg', '-y', '-i', input_path, '-c', 'copy', output_path])
                     return True
@@ -59,10 +60,10 @@ class SilenceRemover:
                 active_intervals.append((current_start, total_duration))
 
             if not active_intervals:
-                print("❌ The entire video is detected as silence. Aborting.")
+                print(" The entire video is detected as silence. Aborting.")
                 return False
 
-            print(f"🎬 Found {len(active_intervals)} active segments. Stitching losslessly...")
+            print(f" Found {len(active_intervals)} active segments. Stitching losslessly...")
 
             # Step 3: Write temporary concat file using absolute path
             list_file = os.path.join(os.path.dirname(output_path), "silence_concat.txt")
@@ -91,12 +92,12 @@ class SilenceRemover:
             if os.path.exists(list_file):
                 os.remove(list_file)
             
-            print(f"🎉 Lossless Silence Removal complete! Saved to: {output_path}")
+            print(f" Lossless Silence Removal complete! Saved to: {output_path}")
             return True
 
         except Exception as e:
-            print(f"❌ Error during silence removal: {str(e)}")
-            if 'list_file' in locals() and os.path.exists(list_file):
+            print(f" Error during silence removal: {str(e)}")
+            if list_file is not None and os.path.exists(list_file):
                 os.remove(list_file)
             return False
 

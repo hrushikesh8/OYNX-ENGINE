@@ -29,7 +29,7 @@ class StreamLadder:
             selected_profiles = ["1080p", "720p", "480p"]
         
         if not os.path.exists(input_path):
-            print(f"❌ Error: Master file not found -> {input_path}")
+            print(f" Error: Master file not found -> {input_path}")
             return False
 
         # Ensure output directory exists
@@ -48,8 +48,8 @@ class StreamLadder:
             "480p":  {"width": "854",  "bitrate": "1000k"}
         }
 
-        print(f"🚀 VidFlow Ladder Service: Initializing ABR Generation...")
-        print(f"🎬 Master: {base_filename}")
+        print(f" VidFlow Ladder Service: Initializing ABR Generation...")
+        print(f" Master: {base_filename}")
 
         success_count = 0
         for name in selected_profiles:
@@ -74,14 +74,14 @@ class StreamLadder:
             ]
 
             try:
-                print(f"⚡ Encoding Profile -> {name}...")
+                print(f" Encoding Profile -> {name}...")
                 subprocess.run(command, check=True, capture_output=True)
                 success_count += 1
             except subprocess.CalledProcessError as e:
-                print(f"⚠️ Failed to generate {name} profile: {e.stderr.decode()}")
+                print(f" Failed to generate {name} profile: {e.stderr.decode()}")
 
         print("-" * 50)
-        print(f"✅ LADDER COMPLETE: {success_count} profiles generated in {output_folder}")
+        print(f" LADDER COMPLETE: {success_count} profiles generated in {output_folder}")
         print("-" * 50)
         
         return True if success_count == len(selected_profiles) else False
@@ -103,9 +103,9 @@ if __name__ == "__main__":
     
     # Run standalone test
     if engine.generate_profiles(master_file, target_dir):
-        print(f"🎉 Your movie is now ready for server-side streaming.")
+        print(f" Your movie is now ready for server-side streaming.")
     else:
-        print("❌ Stream laddering incomplete.")
+        print(" Stream laddering incomplete.")
 
 # ==========================================
 # HOW TO USE THIS CODE (EXAMPLE)

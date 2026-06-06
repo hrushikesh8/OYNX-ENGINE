@@ -18,7 +18,7 @@ def seconds_to_timecode(seconds: float) -> str:
     h = int(seconds // 3600)
     m = int((seconds % 3600) // 60)
     s = int(seconds % 60)
-    ms = int(round((seconds - int(seconds)) * 1000))
+    ms = round((seconds - int(seconds)) * 1000)
     if ms >= 1000:
         s += 1
         ms -= 1000
@@ -186,7 +186,7 @@ class TimelineVisualizer(QWidget):
                     painter.setPen(QPen(QColor("#ffffff"), 1))
                     painter.setFont(QFont("Segoe UI", 8, QFont.Weight.Bold))
                     
-                    elided_name = painter.fontMetrics().elidedText(clip['name'], Qt.TextElideMode.ElideRight, int(clip_w - 12))
+                    elided_name = painter.fontMetrics().elidedText(clip['name'], Qt.TextElideMode.ElideRight, clip_w - 12)
                     painter.drawText(rect.adjusted(6, 4, -6, -18), Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop, elided_name)
 
                     painter.setFont(QFont("Segoe UI", 7))
@@ -228,7 +228,7 @@ class TimelineVisualizer(QWidget):
                 if w_x > 40:
                     painter.setPen(QPen(QColor("#ffffff"), 1))
                     painter.setFont(QFont("Segoe UI", 7, QFont.Weight.Bold))
-                    name_elided = painter.fontMetrics().elidedText(aud['name'], Qt.TextElideMode.ElideRight, int(w_x - 12))
+                    name_elided = painter.fontMetrics().elidedText(aud['name'], Qt.TextElideMode.ElideRight, w_x - 12)
                     painter.drawText(rect.adjusted(6, 0, -6, 0), Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft, name_elided)
         else:
             rect = QRectF(margin_left, audio_y, draw_width, audio_height)

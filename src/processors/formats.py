@@ -21,7 +21,7 @@ class FormatMapper:
         'mpeg': ['-c:v', 'mpeg2video', '-c:a', 'mp2'],      # Same as MPG
     }
 
-    def convert_video(self, input_path: str, output_folder: str, target_format: str, run_id: str = None) -> dict:
+    def convert_video(self, input_path: str, output_folder: str, target_format: str, run_id: str | None = None) -> dict:
         """Helper function to convert a single file."""
         filename = Path(input_path).stem
         output_path = os.path.join(output_folder, f"{filename}.{target_format}")
@@ -33,7 +33,7 @@ class FormatMapper:
         if SettingsManager.should_safeguard_subtitles():
             cmd_flags = ['-map', '0:v', '-map', '0:a?'] + cmd_flags
 
-        print(f"    🔄 Converting: {filename} -> .{target_format}")
+        print(f"    [Convert] {filename} -> .{target_format}")
         
         # Assemble the final execution array, explicitly ignoring unknown streams (e.g., proprietary proprietary data blocks).
         command = ['ffmpeg', '-i', input_path, *cmd_flags, '-ignore_unknown', '-y', output_path]
@@ -47,7 +47,7 @@ class FormatMapper:
         except subprocess.CalledProcessError as e:
             return {"status": "error", "file": filename, "message": str(e)}
 
-    def process_input(self, input_path: str, output_folder: str, target_format: str, run_id: str = None):
+    def process_input(self, input_path: str, output_folder: str, target_format: str, run_id: str | None = None):
         """
         Smart Processor: Handles both Single Files and Folders (Batch).
         """
@@ -57,7 +57,7 @@ class FormatMapper:
         tasks = []
         
         if os.path.isdir(input_path):
-            print(f"📂 Scanning folder for videos...")
+            print(f"Scanning folder for videos...")
             extensions = (
                 '*.mp4', '*.mkv', '*.avi', '*.mov', '*.flv', '*.wmv', 
                 '*.mpg', '*.mpeg', '*.webm', '*.m4v', '*.ts', '*.vob', '*.3gp'
@@ -70,14 +70,14 @@ class FormatMapper:
             tasks = [input_path]
         
         else:
-            print("❌ Error: Invalid input path.")
-            return
+            print("[Error] Invalid input path.")
+            return 0, 0
 
         if not tasks:
-            print("❌ No video files found.")
-            return
+            print("[Error] No video files found.")
+            return 0, 0
 
-        print(f"🚀 Processing {len(tasks)} files...")
+        print(f"[Info] Processing {len(tasks)} files...")
         print("-" * 40)
 
         success_count = 0
@@ -86,20 +86,20 @@ class FormatMapper:
         for file_path in tasks:
             # Skip if already in target format
             if file_path.lower().endswith(f".{target_format}"):
-                print(f"    ⏭️  Skipping {os.path.basename(file_path)} (already matches format)")
+                print(f"    [Skip] {os.path.basename(file_path)} (already matches format)")
                 continue
 
             result = self.convert_video(file_path, output_folder, target_format, run_id)
             
             if result['status'] == 'success':
-                print(f"    ✅ Done: {result['file']}")
+                print(f"    [Done] {result['file']}")
                 success_count += 1
             else:
-                print(f"    ❌ Failed: {result['file']}")
+                print(f"    [Failed] {result['file']}")
                 error_count += 1
 
         print("-" * 40)
-        print(f"🎉 Complete. Success: {success_count} | Errors: {error_count}")
+        print(f"[Complete] Success: {success_count} | Errors: {error_count}")
         return success_count, error_count
 
 # --- YOUR ORIGINAL DOCUMENTATION PRESERVED AT BOTTOM ---

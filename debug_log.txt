@@ -1,0 +1,3 @@
+Started test script
+LOG: ⚡ [Onyx Task] Starting Python script worker...
+FINISHED! success=True msg=Success: 1 | Errors: 0

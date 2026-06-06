@@ -22,14 +22,14 @@ class GifMaker:
         filters = f"fps=15,scale={scale}:-1:flags=lanczos"
 
         try:
-            print(f"🎨 VidFlow GIF: Generating high-quality palette (Preset: {preset})...")
+            print(f" VidFlow GIF: Generating high-quality palette (Preset: {preset})...")
             # Pass 1: Generate Palette globally from the designated temporal window.
             subprocess.run([
                 'ffmpeg', '-ss', start_time, '-t', duration, '-i', input_path,
                 '-vf', f"{filters},palettegen", '-y', palette
             ], check=True, capture_output=True)
 
-            print(f"🎬 VidFlow GIF: Encoding final animation...")
+            print(f" VidFlow GIF: Encoding final animation...")
             # Pass 2: Generate GIF via complex filter mapping (paletteuse).
             # [x] bounds the filtered video stream; [x][1:v] merges the scaled video with the generated palette.
             command = [
@@ -47,13 +47,13 @@ class GifMaker:
                 
             return True
         except subprocess.CalledProcessError as e:
-            print(f"❌ GIF Creation Failed: {e.stderr.decode()}")
+            print(f" GIF Creation Failed: {e.stderr.decode()}")
             return False
 
 # --- STANDALONE EXECUTION LOGIC ---
 if __name__ == "__main__":
     if len(sys.argv) < 3:
-        print("❌ Usage: python gif_maker.py <input> <output> [start] [duration] [preset]")
+        print(" Usage: python gif_maker.py <input> <output> [start] [duration] [preset]")
         print("Presets: ultrafast, fast, medium")
         sys.exit(1)
 
@@ -66,7 +66,7 @@ if __name__ == "__main__":
 
     maker = GifMaker()
     if maker.create_gif(inp, out, start, dur, preset=pre):
-        print(f"✅ GIF Created: {out} (Speed: {pre})")
+        print(f" GIF Created: {out} (Speed: {pre})")
 
 # ==========================================
 # HOW TO USE THIS CODE (EXAMPLE)

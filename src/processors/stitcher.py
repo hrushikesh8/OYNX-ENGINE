@@ -33,13 +33,13 @@ class VideoStitcher:
                 '-y', output_path
             ]
 
-            print(f"🔗 Onyx Stitcher: Joining {len(video_list)} segments...")
+            print(f" Onyx Stitcher: Joining {len(video_list)} segments...")
             subprocess.run(command, check=True, capture_output=True)
             
             return True
             
         except subprocess.CalledProcessError as e:
-            print(f"❌ FFmpeg Stitch Error: {e.stderr.decode()}")
+            print(f" FFmpeg Stitch Error: {e.stderr.decode()}")
             return False
         finally:
             # Always clean up the temp file
@@ -54,7 +54,7 @@ if __name__ == "__main__":
 
     stitcher = VideoStitcher()
     if stitcher.concat_videos(sys.argv[2:], sys.argv[1]):
-        print(f"✅ Success: {sys.argv[1]}")
+        print(f" Success: {sys.argv[1]}")
 
 # ==========================================
 # HOW TO USE THIS CODE (EXAMPLE)

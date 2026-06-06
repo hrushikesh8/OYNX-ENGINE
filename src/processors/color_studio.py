@@ -14,14 +14,14 @@ class ColorStudioProcessor:
                       contrast: float = 1.0, 
                       saturation: float = 1.0, 
                       gamma: float = 1.0, 
-                      lut_path: str = None) -> bool:
+                      lut_path: str | None = None) -> bool:
                       
         if not os.path.exists(input_path):
             print(f"[ERROR] Input video does not exist: {input_path}")
             return False
 
-        print(f"🎬 Initializing Color Studio Pipeline for: {os.path.basename(input_path)}...")
-        print(f"🔧 Adjustments -> Brightness: {brightness}, Contrast: {contrast}, Saturation: {saturation}, Gamma: {gamma}")
+        print(f" Initializing Color Studio Pipeline for: {os.path.basename(input_path)}...")
+        print(f" Adjustments -> Brightness: {brightness}, Contrast: {contrast}, Saturation: {saturation}, Gamma: {gamma}")
 
         # Initialize the FFmpeg video filter chain array to construct a complex filter graph dynamically.
         filter_chain = []
@@ -36,7 +36,7 @@ class ColorStudioProcessor:
 
         # Apply 3D LUT file if provided for cinematic color grading
         if lut_path and os.path.isfile(lut_path):
-            print(f"🎨 Embedding 3D LUT Table: {os.path.basename(lut_path)}")
+            print(f" Embedding 3D LUT Table: {os.path.basename(lut_path)}")
             # Escape Windows filesystem paths to conform with FFmpeg's strict syntax requirements for the lut3d filter.
             clean_lut_path = lut_path.replace("\\", "/").replace(":", "\\:")
             filter_chain.append(f"lut3d=file='{clean_lut_path}'")
@@ -59,11 +59,11 @@ class ColorStudioProcessor:
         try:
             # Execute FFmpeg process synchronously; suppress verbose output to maintain clean UI logs
             subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
-            print(f"✅ Color grading complete! Saved at: {output_path}")
+            print(f" Color grading complete! Saved at: {output_path}")
             return True
         except subprocess.CalledProcessError as e:
             # Safely capture and isolate sub-process failures
-            print(f"❌ Color Studio Engine failure: {str(e)}")
+            print(f" Color Studio Engine failure: {str(e)}")
             return False
 
 if __name__ == "__main__":

@@ -13,26 +13,26 @@ class EnterpriseUnarchiver:
         # We point Python exactly to where you dropped the .exe
         self.engine_path = os.path.abspath(os.path.join("src", "tools", "7za.exe"))
 
-    def extract_archive(self, zip_path: str, output_folder: str = None):
+    def extract_archive(self, zip_path: str, output_folder: str | None = None):
         """
         Uses 7za.exe to blast open a zip file at maximum disk speed.
         """
         if not os.path.exists(self.engine_path):
-            print("❌ CRITICAL: 7za.exe not found in src/tools/")
+            print(" CRITICAL: 7za.exe not found in src/tools/")
             print("Please download it and place it in the tools folder.")
             return False
 
         if not os.path.exists(zip_path):
-            print(f"❌ Error: Could not find archive -> {zip_path}")
+            print(f" Error: Could not find archive -> {zip_path}")
             return False
 
         # If user doesn't specify an output folder, extract it right next to the zip
         if not output_folder:
             output_folder = os.path.splitext(zip_path)[0]
 
-        print(f"🚀 VidFlow Un-Archiver: Firing up 7-Zip Engine...")
-        print(f"📦 Target: {os.path.basename(zip_path)}")
-        print(f"📂 Dest: {output_folder}")
+        print(f" VidFlow Un-Archiver: Firing up 7-Zip Engine...")
+        print(f" Target: {os.path.basename(zip_path)}")
+        print(f" Dest: {output_folder}")
 
         # --- NATIVE BINARY EXECUTION (7-Zip C++) ---
         # x: Instructs the engine to extract files while preserving the full internal directory structure.
@@ -49,11 +49,11 @@ class EnterpriseUnarchiver:
             # We run the .exe and capture the output so it doesn't spam the terminal
             result = subprocess.run(command, capture_output=True, text=True, check=True)
             print("-" * 50)
-            print("✅ EXTRACTION COMPLETE (Windows Bypassed)")
+            print(" EXTRACTION COMPLETE (Windows Bypassed)")
             print("-" * 50)
             return True
         except subprocess.CalledProcessError as e:
-            print("❌ Extraction Failed!")
+            print(" Extraction Failed!")
             print(e.stderr)
             return False
 

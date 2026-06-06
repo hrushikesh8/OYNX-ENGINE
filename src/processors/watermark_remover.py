@@ -35,7 +35,7 @@ def get_watermark_coords(video_path):
     if w % 2 != 0: w += 1
     if h % 2 != 0: h += 1
 
-    return (int(x), int(y), int(w), int(h))
+    return (x, y, w, h)
 
 def run_delogo_workflow(target_path):
     print("\n--- VidFlow: Advanced Delogo Engine ---")

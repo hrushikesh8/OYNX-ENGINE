@@ -36,7 +36,7 @@ class MotionFluidizer:
         
         # Security Check: Ensure the AI binary exists
         if not os.path.exists(self.ai_bin):
-            print(f"❌ Critical Error: RIFE Engine not found at {self.ai_bin}")
+            print(f" Critical Error: RIFE Engine not found at {self.ai_bin}")
             print("Ensure the RIFE-NCNN-Vulkan binaries are present in your /bin folder.")
             return False
 
@@ -51,19 +51,19 @@ class MotionFluidizer:
         ]
 
         try:
-            print(f"✨ VidFlow Motion Service: Initializing AI Interpolation...")
-            print(f"🚀 Processing: {os.path.basename(input_path)} -> Smoothing to {multiplier}x FPS")
-            print("💎 Generating intermediate frames. GPU hardware acceleration active.")
+            print(f" VidFlow Motion Service: Initializing AI Interpolation...")
+            print(f" Processing: {os.path.basename(input_path)} -> Smoothing to {multiplier}x FPS")
+            print(" Generating intermediate frames. GPU hardware acceleration active.")
             
             # Subprocess execution allows the user to see progress in the terminal
             subprocess.run(command, check=True)
             return True
             
         except subprocess.CalledProcessError as e:
-            print(f"❌ Motion Interpolation Failed: {e}")
+            print(f" Motion Interpolation Failed: {e}")
             return False
         except Exception as e:
-            print(f"❌ An unexpected error occurred: {e}")
+            print(f" An unexpected error occurred: {e}")
             return False
 
 # --- STANDALONE EXECUTION LOGIC ---
@@ -85,10 +85,10 @@ if __name__ == "__main__":
     # Run standalone test
     if engine.smooth_motion(input_file, output_file):
         print("-" * 50)
-        print(f"✅ SUCCESS: {output_file} is now fluid and smooth.")
+        print(f" SUCCESS: {output_file} is now fluid and smooth.")
         print("-" * 50)
     else:
-        print("❌ Motion smoothing aborted.")
+        print(" Motion smoothing aborted.")
 
 # ==========================================
 # HOW TO USE THIS CODE (EXAMPLE)

@@ -51,13 +51,13 @@ class AudioExtractor:
         command.extend(['-y', output_path])
 
         try:
-            print(f"🎵 VidFlow Extractor: Ripping Track {track_id} as {output_format.upper()}...")
+            print(f" VidFlow Extractor: Ripping Track {track_id} as {output_format.upper()}...")
             subprocess.run(command, check=True, capture_output=True)
             if run_id:
                 TimeMachine.log_action("Audio Extractor", run_id, f"EXTRACT_{output_format.upper()}", input_path, output_path, op_type="CREATE")
             return True, output_path
         except subprocess.CalledProcessError as e:
-            print(f"❌ Error on {filename}: {e.stderr.decode()}")
+            print(f" Error on {filename}: {e.stderr.decode()}")
             return False, None
 
     def extract_folder(self, folder_path: str, output_format: str = "mp3", track_id: int = 0, run_id: str = None):
@@ -65,7 +65,7 @@ class AudioExtractor:
         🚀 NEW FEATURE: The Mass Harvester.
         Scans a folder and rips the audio from every video inside it.
         """
-        print(f"📂 VidFlow Batch: Scanning '{os.path.basename(folder_path)}' for videos...")
+        print(f" VidFlow Batch: Scanning '{os.path.basename(folder_path)}' for videos...")
         
         # Search for common video formats recursively utilizing system-level pattern matching
         search_patterns = ['*.mp4', '*.mkv', '*.avi', '*.mov', '*.webm']
@@ -75,7 +75,7 @@ class AudioExtractor:
             tasks.extend(glob.glob(os.path.join(folder_path, '**', ext), recursive=True))
 
         if not tasks:
-            print("❌ No videos found in the specified folder.")
+            print(" No videos found in the specified folder.")
             return False
 
         print(f"🚀 Found {len(tasks)} videos. Starting Mass Extraction...\n" + "-"*40)
@@ -90,13 +90,13 @@ class AudioExtractor:
                 error_count += 1
                 
         print("-" * 40)
-        print(f"🎉 Batch Complete! Ripped {success_count}/{len(tasks)} files to {output_format.upper()}.")
+        print(f" Batch Complete! Ripped {success_count}/{len(tasks)} files to {output_format.upper()}.")
         return success_count > 0
 
 # --- STANDALONE EXECUTION LOGIC (UPGRADED FOR FOLDERS) ---
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("❌ VidFlow Error: Missing arguments.")
+        print(" VidFlow Error: Missing arguments.")
         print("Usage: python extractor.py <file_or_folder_path> [format:mp3|wav|original] [track_id:0,1,2...]")
         sys.exit(1)
 
@@ -112,9 +112,9 @@ if __name__ == "__main__":
     elif os.path.isfile(target_path):
         success, out = extractor.extract_audio(target_path, fmt, tid)
         if success:
-            print(f"✅ Extracted: {out}")
+            print(f" Extracted: {out}")
     else:
-        print("❌ Invalid path provided.")
+        print(" Invalid path provided.")
 
 # ==========================================
 # HOW TO USE THIS CODE (EXAMPLES)
