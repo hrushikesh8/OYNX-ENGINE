@@ -1,5 +1,8 @@
 import sys
 import os
+
+# Suppress verbose Qt Multimedia FFmpeg decoder warnings (e.g. AAC env_facs_q invalid spam)
+os.environ["QT_LOGGING_RULES"] = "qt.multimedia.*=false"
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
                              QHBoxLayout, QPushButton, QLabel, QStackedWidget, 
                              QFrame, QGridLayout, QStatusBar, QProgressBar, QScrollArea)

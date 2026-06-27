@@ -2,6 +2,8 @@ import os
 import subprocess
 import threading
 import re
+import contextlib
+import io
 from PyQt6.QtWidgets import QFrame, QHBoxLayout, QLineEdit, QPushButton, QFileDialog, QTextEdit, QMessageBox, QWidget, QVBoxLayout, QLabel, QSizePolicy, QProgressBar
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QPointF, QRectF
 from PyQt6.QtGui import QPainter, QColor, QPolygonF, QBrush
@@ -17,6 +19,18 @@ def custom_subprocess_run(cmd, *args, **kwargs):
         return original_subprocess_run(cmd, *args, **kwargs)
 
 subprocess.run = custom_subprocess_run
+
+
+class _SignalStream(io.TextIOBase):
+    def __init__(self, signal):
+        super().__init__()
+        self.signal = signal
+    def write(self, text):
+        if text:
+            self.signal.emit(text)
+        return len(text)
+    def flush(self):
+        pass
 
 
 class TaskWorker(QThread):
@@ -56,7 +70,9 @@ class TaskWorker(QThread):
             try:
                 self.log_signal.emit("⚡ [Onyx Task] Starting Python script worker...\n")
                 # Redirect stdout for Python callables if possible or execute directly
-                result = self.func_or_cmd(*self.args, **self.kwargs)
+                stream = _SignalStream(self.log_signal)
+                with contextlib.redirect_stdout(stream), contextlib.redirect_stderr(stream):
+                    result = self.func_or_cmd(*self.args, **self.kwargs)
                 if isinstance(result, tuple) and len(result) > 0:
                     success = result[0]
                     msg = result[1] if len(result) > 1 else "Task finished."
@@ -94,6 +110,7 @@ class TaskWorker(QThread):
         )
         
         stdout_lines = []
+        capture_output = kwargs.get('capture_output', False) or kwargs.get('stdout') in (subprocess.PIPE, subprocess.DEVNULL)
         
         # Regex parsers for FFmpeg progress logs
         duration_sec = None
@@ -107,7 +124,8 @@ class TaskWorker(QThread):
                 break
             if line:
                 stdout_lines.append(line)
-                self.log_signal.emit(line)
+                if not capture_output:
+                    self.log_signal.emit(line)
                 
                 # 1. Parse total video duration
                 if duration_sec is None:
@@ -163,9 +181,9 @@ class TaskWorker(QThread):
         stdout_bytes = "".join(stdout_lines).encode('utf-8', errors='replace')
         
         if kwargs.get('check', False) and return_code != 0:
-            raise subprocess.CalledProcessError(return_code, cmd_list, output=stdout_bytes, stderr=None)
+            raise subprocess.CalledProcessError(return_code, cmd_list, output=stdout_bytes, stderr=stdout_bytes)
             
-        return subprocess.CompletedProcess(cmd_list, return_code, stdout_bytes, None)
+        return subprocess.CompletedProcess(cmd_list, return_code, stdout_bytes, stdout_bytes)
 
     def cancel(self):
         """Immediately kill the underlying subprocess if it exists."""
@@ -197,9 +215,9 @@ class EstimateWorker(QThread):
             if not path:
                 continue
             if os.path.isdir(path):
-                extensions = ('*.mp4', '*.mkv', '*.avi', '*.mov', '*.flv', '*.wmv', '*.mpg', '*.mpeg', '*.webm')
+                extensions = ('*.mp4', '*.mkv', '*.avi', '*.mov', '*.flv', '*.wmv', '*.mpg', '*.mpeg', '*.webm', '*.mp3', '*.wav', '*.m4a', '*.aac')
                 for ext in extensions:
-                    files_to_probe.extend(glob.glob(os.path.join(path, '**', ext), recursive=True))
+                    files_to_probe.extend(glob.glob(os.path.join(path, ext), recursive=False))
             elif os.path.isfile(path):
                 files_to_probe.append(path)
             
@@ -272,9 +290,15 @@ class SmartRunButton(QWidget):
         
         self.progress = QProgressBar()
         self.progress.setTextVisible(True)
-        self.progress.setMinimumHeight(40)
+        self.progress.setMinimumHeight(35)
         self.progress.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.progress.hide()
+        self.progress.setValue(0)
+        self.progress.setFormat("Status: Idle")
+        self.progress.setStyleSheet("""
+            QProgressBar { background-color: #1a1a1a; border: 1px solid #333; border-radius: 6px; color: #777; font-weight: bold; font-size: 13px; }
+            QProgressBar::chunk { background-color: #2D72D9; border-radius: 6px; }
+        """)
+        # We NO LONGER hide it, so the user can always see where the progress will be tracked.
 
         self.layout.addWidget(self.btn)
         self.layout.addWidget(self.progress)
@@ -296,7 +320,6 @@ class SmartRunButton(QWidget):
 
     def handle_click(self):
         if not self.get_input_paths_callback and not self.on_confirm_callback:
-            self.progress.hide()
             self.clicked.emit()
             return
             
@@ -462,7 +485,7 @@ class DropZone(QFrame):
         from PyQt6.QtWidgets import QFileDialog
         
         mode_to_use = override_mode if override_mode else self.mode
-        start_dir = getattr(sys, '_onyx_last_dir', os.path.expanduser("~\\Desktop"))
+        start_dir = getattr(sys, '_onyx_last_dir', os.path.expanduser("~"))
         
         # Temporarily disable drops to guarantee no OLE conflicts
         self.setAcceptDrops(False)

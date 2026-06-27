@@ -35,7 +35,7 @@ class TrackProcessor:
         if os.path.isdir(input_path):
             print(f" Scanning folder for videos...")
             for ext in ['*.mkv', '*.mp4', '*.avi']:
-                tasks.extend(glob.glob(os.path.join(input_path, '**', ext), recursive=True))
+                tasks.extend(glob.glob(os.path.join(input_path, ext), recursive=False))
         elif os.path.isfile(input_path):
             tasks = [input_path]
         else:

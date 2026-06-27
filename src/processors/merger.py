@@ -53,8 +53,6 @@ class StreamMerger:
         # CRITICAL FIX: MP4 files do not support 'srt' codec. They need 'mov_text'.
         if output_path.lower().endswith('.mp4'):
             command.extend(['-c:s', 'mov_text'])
-        else:
-            command.extend(['-c:s', 'srt'])
 
         command.append(output_path)
         
@@ -90,7 +88,7 @@ class StreamMerger:
         for file in files:
             if file.lower().endswith(self.video_exts):
                 # Ignore files we already processed in a previous run
-                if file.startswith("Onyx_Merged_"):
+                if file.startswith("Onyx_Merged_") or "_subs_added" in file or "_audio_synced" in file:
                     continue
 
                 base_name = os.path.splitext(file)[0]
@@ -105,7 +103,10 @@ class StreamMerger:
                 if matching_track:
                     # Keep original extension or default to .mkv for high compatibility
                     ext = os.path.splitext(file)[1]
-                    output_name = f"Onyx_Merged_{base_name}{ext}"
+                    if mode == 'subtitle':
+                        output_name = f"{base_name}_subs_added{ext}"
+                    else:
+                        output_name = f"Onyx_Merged_{base_name}{ext}"
                     output_path = os.path.join(target_folder, output_name)
 
                     if mode == 'subtitle':

@@ -71,8 +71,7 @@ class AudioExtractor:
         search_patterns = ['*.mp4', '*.mkv', '*.avi', '*.mov', '*.webm']
         tasks = []
         for ext in search_patterns:
-            # Construct a comprehensive file manifest prior to iterative subprocess execution
-            tasks.extend(glob.glob(os.path.join(folder_path, '**', ext), recursive=True))
+            tasks.extend(glob.glob(os.path.join(folder_path, ext), recursive=False))
 
         if not tasks:
             print(" No videos found in the specified folder.")

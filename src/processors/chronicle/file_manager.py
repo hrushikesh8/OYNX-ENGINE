@@ -10,9 +10,10 @@ from src.processors.time_machine import TimeMachine
 def organize_and_rename(master_folder, show_name, api_key, show_id, dry_run=True, run_id=None):
     # Fetch show_id if not provided
     if show_id is None:
-        fetched_id, _ = get_show_id(api_key, show_name)
+        fetched_id, official_name = get_show_id(api_key, show_name)
         if fetched_id:
             show_id = fetched_id
+            show_name = official_name
             print(f"📡 Found TVMaze ID for '{show_name}': {show_id}")
         else:
             print(f"⚠️ TVMaze could not find '{show_name}'. Falling back to Offline Mode (No Official Titles).")

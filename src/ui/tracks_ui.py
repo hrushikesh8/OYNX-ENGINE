@@ -76,7 +76,7 @@ class TrackCleanerUI(QWidget):
     def refresh_tracks(self):
         """Called when a file is dropped. Uses your get_track_info logic."""
         path = self.drop_zone.file_input.text().strip()
-        if not path or not os.path.exists(path): return
+        if not path or not os.path.isfile(path): return
 
         # Clear existing list
         for cb in self.checkboxes:

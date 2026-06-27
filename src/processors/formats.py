@@ -11,10 +11,10 @@ class FormatMapper:
     """
     # Define codec rules for different containers to ensure compatibility
     FORMAT_RULES = {
-        'mkv': ['-c', 'copy'],  # Lossless, keeps video and audio streams
-        'mp4': ['-c:v', 'copy', '-c:a', 'aac', '-c:s', 'mov_text', '-strict', 'experimental'], # Best for compatibility
+        'mkv': ['-c:v', 'copy', '-c:a', 'copy', '-c:s', 'srt'],  # Lossless video/audio, safe SRT subs
+        'mp4': ['-c:v', 'copy', '-c:a', 'aac', '-c:s', 'mov_text'], # Best for compatibility
         'avi': ['-c:v', 'copy', '-c:a', 'copy'],
-        'mov': ['-c:v', 'copy', '-c:a', 'aac'],
+        'mov': ['-c:v', 'copy', '-c:a', 'aac', '-c:s', 'mov_text'],
         'flv': ['-c:v', 'flv', '-c:a', 'aac'],
         'webm': ['-c:v', 'libvpx-vp9', '-c:a', 'libopus'],  # WebM usually needs re-encoding
         'mpg': ['-c:v', 'mpeg2video', '-c:a', 'mp2'],       # MPG requires specific MPEG codecs
@@ -22,30 +22,53 @@ class FormatMapper:
     }
 
     def convert_video(self, input_path: str, output_folder: str, target_format: str, run_id: str | None = None) -> dict:
-        """Helper function to convert a single file."""
+        """Helper function to convert a single file using a resilient 3-Tier Fallback Strategy."""
         filename = Path(input_path).stem
         output_path = os.path.join(output_folder, f"{filename}.{target_format}")
         
-        # Retrieve pre-defined container encoding directives, defaulting to a lossless stream copy.
-        cmd_flags = self.FORMAT_RULES.get(target_format, ['-c', 'copy'])
+        # Retrieve container encoding directives
+        base_flags = self.FORMAT_RULES.get(target_format, ['-c', 'copy'])
         
-        # 🚀 UPGRADE: Force video & audio only if Subtitle Safeguard is enabled to prevent MKV subtitle demuxing failures.
+        # Decide stream mapping based on Subtitle Safeguard setting
         if SettingsManager.should_safeguard_subtitles():
-            cmd_flags = ['-map', '0:v', '-map', '0:a?'] + cmd_flags
+            tier1_map = ['-map', '0:v:0', '-map', '0:a?']
+        else:
+            tier1_map = ['-map', '0:v:0', '-map', '0:a?', '-map', '0:s?']
+
+        # Tier 1: Fast Transmux (stream copy with container-compatible subtitle conversion)
+        cmd_tier1 = ['ffmpeg', '-i', input_path, *tier1_map, *base_flags, '-ignore_unknown', '-y', output_path]
+        
+        # Tier 2: Safe Stream Copy (drop subtitles & attachments, copy video, transcode audio to AAC)
+        cmd_tier2 = ['ffmpeg', '-i', input_path, '-map', '0:v:0', '-map', '0:a?', '-c:v', 'copy', '-c:a', 'aac', '-ignore_unknown', '-y', output_path]
+        
+        # Tier 3: Universal Transcode (re-encode video to H.264 & audio to AAC)
+        cmd_tier3 = ['ffmpeg', '-i', input_path, '-map', '0:v:0', '-map', '0:a?', '-c:v', 'libx264', '-preset', 'fast', '-crf', '23', '-c:a', 'aac', '-b:a', '192k', '-ignore_unknown', '-y', output_path]
 
         print(f"    [Convert] {filename} -> .{target_format}")
         
-        # Assemble the final execution array, explicitly ignoring unknown streams (e.g., proprietary proprietary data blocks).
-        command = ['ffmpeg', '-i', input_path, *cmd_flags, '-ignore_unknown', '-y', output_path]
+        attempts = [
+            ("Tier 1 (Fast Transmux)", cmd_tier1),
+            ("Tier 2 (Safe Stream Copy)", cmd_tier2),
+            ("Tier 3 (Universal Transcode)", cmd_tier3)
+        ]
         
-        try:
-            # Run ffmpeg
-            subprocess.run(command, check=True, capture_output=True)
-            if run_id:
-                TimeMachine.log_action("Format Converter", run_id, f"CONVERT_{target_format.upper()}", input_path, output_path, op_type="CREATE")
-            return {"status": "success", "file": filename}
-        except subprocess.CalledProcessError as e:
-            return {"status": "error", "file": filename, "message": str(e)}
+        last_error = ""
+        for tier_name, cmd in attempts:
+            try:
+                subprocess.run(cmd, check=True, capture_output=True)
+                if run_id:
+                    TimeMachine.log_action("Format Converter", run_id, f"CONVERT_{target_format.upper()}", input_path, output_path, op_type="CREATE")
+                return {"status": "success", "file": filename}
+            except subprocess.CalledProcessError as e:
+                err_msg = e.stderr.decode('utf-8', errors='ignore') if e.stderr else str(e)
+                last_error = err_msg.strip().split('\n')[-1] if err_msg else str(e)
+                if os.path.exists(output_path):
+                    try:
+                        os.remove(output_path)
+                    except Exception:
+                        pass
+
+        return {"status": "error", "file": filename, "message": last_error}
 
     def process_input(self, input_path: str, output_folder: str, target_format: str, run_id: str | None = None):
         """
@@ -63,8 +86,7 @@ class FormatMapper:
                 '*.mpg', '*.mpeg', '*.webm', '*.m4v', '*.ts', '*.vob', '*.3gp'
             )
             for ext in extensions:
-                # YOUR ORIGINAL RECURSIVE LOGIC: Traverses the directory tree to build a unified processing manifest.
-                tasks.extend(glob.glob(os.path.join(input_path, '**', ext), recursive=True))
+                tasks.extend(glob.glob(os.path.join(input_path, ext), recursive=False))
         
         elif os.path.isfile(input_path):
             tasks = [input_path]

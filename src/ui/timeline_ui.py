@@ -67,10 +67,18 @@ class DragDropTable(QTableWidget):
             event.setDropAction(Qt.DropAction.CopyAction)
             event.accept()
             paths = []
+            valid_exts = ('.mp4', '.mkv', '.avi', '.mov', '.m4v', '.webm', '.png', '.jpg', '.jpeg', '.webp', '.bmp', '.mp3', '.wav', '.m4a', '.aac')
             for url in event.mimeData().urls():
                 file_path = str(url.toLocalFile())
-                ext = file_path.lower()
-                if ext.endswith(('.mp4', '.mkv', '.avi', '.mov', '.m4v', '.webm', '.png', '.jpg', '.jpeg', '.webp', '.bmp', '.mp3', '.wav', '.m4a', '.aac')):
+                if os.path.isdir(file_path):
+                    try:
+                        for f in os.listdir(file_path):
+                            full_f = os.path.join(file_path, f)
+                            if os.path.isfile(full_f) and f.lower().endswith(valid_exts):
+                                paths.append(full_f)
+                    except Exception:
+                        pass
+                elif file_path.lower().endswith(valid_exts):
                     paths.append(file_path)
             if paths:
                 self.files_dropped.emit(paths)
@@ -745,15 +753,32 @@ class TimelineComposerUI(QWidget):
     # ---------------------------------------------------------------------
 
     def browse_media_clips(self):
+        import sys
+        start_dir = getattr(sys, '_onyx_last_dir', os.path.expanduser("~"))
         files, _ = QFileDialog.getOpenFileNames(
-            self, "Select Video or Image B-Roll Clips", "", 
+            self, "Select Video or Image B-Roll Clips", start_dir, 
             "Media Files (*.mp4 *.mkv *.avi *.mov *.m4v *.webm *.png *.jpg *.jpeg *.webp *.bmp);;Video Files (*.mp4 *.mkv *.avi *.mov *.m4v *.webm);;Image Files (*.png *.jpg *.jpeg *.webp *.bmp)"
         )
         if files:
+            sys._onyx_last_dir = os.path.dirname(files[0])
             self.add_clips_by_paths(files)
 
     def add_clips_by_paths(self, paths):
+        expanded_paths = []
+        valid_exts = ('.mp4', '.mkv', '.avi', '.mov', '.m4v', '.webm', '.png', '.jpg', '.jpeg', '.webp', '.bmp')
         for path in paths:
+            if os.path.isdir(path):
+                try:
+                    for f in os.listdir(path):
+                        full_f = os.path.join(path, f)
+                        if os.path.isfile(full_f) and f.lower().endswith(valid_exts):
+                            expanded_paths.append(full_f)
+                except Exception:
+                    pass
+            elif os.path.isfile(path) and path.lower().endswith(valid_exts):
+                expanded_paths.append(path)
+
+        for path in expanded_paths:
             is_image = path.lower().endswith(('.png', '.jpg', '.jpeg', '.webp', '.bmp'))
             if is_image:
                 clip = {

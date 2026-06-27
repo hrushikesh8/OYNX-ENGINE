@@ -22,7 +22,7 @@ class VideoDivider:
         # -reset_timestamps 1: Essential for standalone playback of chunks.
         # -avoid_negative_ts make_zero: UPGRADE - Ensures chunks join perfectly later by shifting PTS/DTS to 0.
         # 🚀 UPGRADE: Conditionally apply subtitle safeguard by evaluating global settings.
-        maps = ['-map', '0:v', '-map', '0:a?'] if SettingsManager.should_safeguard_subtitles() else ['-map', '0']
+        maps = ['-map', '0:V', '-map', '0:a?'] if SettingsManager.should_safeguard_subtitles() else ['-map', '0:V', '-map', '0:a?', '-map', '0:s?']
         
         command = [
             'ffmpeg', '-i', input_path, 
@@ -49,7 +49,8 @@ class VideoDivider:
             
             return True
         except subprocess.CalledProcessError as e:
-            print(f" Error: {e.stderr.decode('utf-8')}")
+            err_msg = (e.stderr or e.output or b'Unknown FFmpeg Error').decode('utf-8', errors='replace')
+            print(f" Error: {err_msg}")
             return False
 
     def split_at_intermission(self, input_path: str, split_time: str, run_id: str | None = None):
@@ -70,7 +71,7 @@ class VideoDivider:
             print(f"  Generating Part 1 (Start -> {split_time})...")
             # Uses -to for precise ending point.
             # 🚀 UPGRADE: Conditionally apply subtitle safeguard
-            maps = ['-map', '0:v', '-map', '0:a?'] if SettingsManager.should_safeguard_subtitles() else ['-map', '0']
+            maps = ['-map', '0:V', '-map', '0:a?'] if SettingsManager.should_safeguard_subtitles() else ['-map', '0:V', '-map', '0:a?', '-map', '0:s?']
             
             cmd1 = [
                 'ffmpeg', '-i', input_path, 
@@ -102,7 +103,8 @@ class VideoDivider:
             
             return True, out1, out2
         except subprocess.CalledProcessError as e:
-            print(f" Error: {e.stderr.decode('utf-8')}")
+            err_msg = (e.stderr or e.output or b'Unknown FFmpeg Error').decode('utf-8', errors='replace')
+            print(f" Error: {err_msg}")
             return False, None, None
 
 # --- STANDALONE EXECUTION LOGIC ---

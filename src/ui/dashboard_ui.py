@@ -182,7 +182,7 @@ class DashboardUI(QWidget):
     # --- METADATA EDITOR LOGIC ---
     def load_metadata(self):
         path = self.meta_drop.file_input.text().strip()
-        if not path or not os.path.exists(path):
+        if not path or not os.path.isfile(path):
             return
         
         tags = self.meta_editor.read_metadata(path)
@@ -193,7 +193,7 @@ class DashboardUI(QWidget):
 
     def apply_metadata(self):
         path = self.meta_drop.file_input.text().strip()
-        if not path or not os.path.exists(path):
+        if not path or not os.path.isfile(path):
             self.log_console.append("❌ Error: Select a video file first.")
             return
             

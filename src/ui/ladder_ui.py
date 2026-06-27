@@ -273,11 +273,11 @@ class StreamLadderUI(QWidget):
 
     # --- SYNCHRONIZED PLAYER ACTIONS ---
     def load_video_a(self, path):
-        if path and os.path.exists(path):
+        if path and os.path.isfile(path):
             self.player_a.setSource(QUrl.fromLocalFile(path))
 
     def load_video_b(self, path):
-        if path and os.path.exists(path):
+        if path and os.path.isfile(path):
             self.player_b.setSource(QUrl.fromLocalFile(path))
 
     def toggle_sync_playback(self):

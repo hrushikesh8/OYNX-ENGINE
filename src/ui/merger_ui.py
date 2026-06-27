@@ -101,7 +101,7 @@ class StreamMergerUI(QWidget):
         
         fp_layout.addSpacing(20)
         fp_layout.addWidget(QLabel("Select Folder to Scan:"))
-        self.folder_drop = DropZone(self)
+        self.folder_drop = DropZone(self, mode='dir')
         fp_layout.addWidget(self.folder_drop)
         fp_layout.addStretch()
         
@@ -141,7 +141,11 @@ class StreamMergerUI(QWidget):
             if not v_path or not e_path:
                 return
 
-            output = os.path.join(os.path.dirname(v_path), f"Onyx_Merged_{os.path.basename(v_path)}")
+            base_name, ext = os.path.splitext(os.path.basename(v_path))
+            if self.mode == 'subtitle':
+                output = os.path.join(os.path.dirname(v_path), f"{base_name}_subs_added{ext}")
+            else:
+                output = os.path.join(os.path.dirname(v_path), f"Onyx_Merged_{base_name}{ext}")
             filename = os.path.basename(v_path)
             
             def task():
@@ -163,7 +167,7 @@ class StreamMergerUI(QWidget):
             foldername = os.path.basename(folder)
             
             def task():
-                self.engine.batch_smart_sync(folder, self.mode)
+                self.engine.batch_process_folder(folder, self.mode)
                 return True, f"Smart Folder sync finished for: {folder}"
                 
             self.orchestrator.add_background_job(f"Mux Folder: {foldername}", task, estimated_seconds=est_seconds, local_widget=self.exec_btn)

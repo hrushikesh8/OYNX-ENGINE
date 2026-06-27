@@ -180,7 +180,7 @@ class DividerUI(QWidget):
 
     # --- VIDEO PLAYER LOGIC ---
     def load_video(self, file_path):
-        if file_path:
+        if file_path and os.path.isfile(file_path):
             self.media_player.setSource(QUrl.fromLocalFile(file_path))
             self.media_player.play()
             self.play_btn.setText("⏸")
