@@ -100,9 +100,10 @@ class TimeMachineDialog(QDialog):
 
 
 class ChronicleUI(QWidget):
-    def __init__(self, orchestrator):
+    def __init__(self, back_callback=None, orchestrator=None):
         super().__init__()
         self.orchestrator = orchestrator
+        self.back_callback = back_callback
         self.setup_ui()
 
     def setup_ui(self):

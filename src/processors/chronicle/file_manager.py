@@ -25,7 +25,7 @@ def organize_and_rename(master_folder, show_name, api_key, show_id, dry_run=True
     pattern = r'(?<!\d)[Ss]?(\d{1,3})[\s\.\-]*[EeXx](\d{1,4})(?!\d)' 
     
     # What kind of files do we actually care about?
-    video_exts = ('.mkv', '.mp4', '.avi', '.m4v')
+    video_exts = ('.mkv', '.mp4', '.avi', '.m4v', '.mov', '.webm', '.flv', '.wmv', '.mpg', '.mpeg', '.ts', '.vob', '.3gp')
     sub_exts = ('.srt', '.ass', '.vtt')
     junk_exts = ('.txt', '.nfo', '.url', '.ini', '.jpg', '.png')
     
@@ -164,7 +164,7 @@ def organize_and_rename(master_folder, show_name, api_key, show_id, dry_run=True
 def audit_missing_episodes(master_folder, show_name, api_key, show_id):
     # Reads your local drive and compares it to TVMaze to find missing files
     pattern = r'[Ss](\d+)[\s\.\-]*[EeXx](\d+)' 
-    valid_ext = ('.mkv', '.mp4', '.avi', '.m4v')
+    valid_ext = ('.mkv', '.mp4', '.avi', '.m4v', '.mov', '.webm', '.flv', '.wmv', '.mpg', '.mpeg', '.ts', '.vob', '.3gp')
     local_episodes = set()
     
     # 1. Scan your hard drive

@@ -34,8 +34,13 @@ class TrackProcessor:
         # 1. Detect if it's a folder or a single file
         if os.path.isdir(input_path):
             print(f" Scanning folder for videos...")
-            for ext in ['*.mkv', '*.mp4', '*.avi']:
-                tasks.extend(glob.glob(os.path.join(input_path, ext), recursive=False))
+            valid_exts = ('.mkv', '.mp4', '.avi', '.mov', '.webm', '.ts', '.flv', '.m4v', '.mp3', '.wav', '.flac', '.mka')
+            for f in os.listdir(input_path):
+                if f.lower().endswith(valid_exts):
+                    full_p = os.path.join(input_path, f)
+                    if os.path.isfile(full_p):
+                        tasks.append(full_p)
+            tasks.sort()
         elif os.path.isfile(input_path):
             tasks = [input_path]
         else:
@@ -43,7 +48,7 @@ class TrackProcessor:
             return False
 
         if not tasks:
-            print(" No videos found.")
+            print(" No files found.")
             return False
 
         print(f" Processing {len(tasks)} files...")
@@ -53,34 +58,152 @@ class TrackProcessor:
         
         for vid in tasks:
             print(f"    Cleaning {label.capitalize()}: {os.path.basename(vid)}")
-            out_path = os.path.splitext(vid)[0] + f"_clean_{label}.mkv"
+            base, ext = os.path.splitext(vid)
+            out_ext = ext if ext.lower() in ('.mp4', '.mkv', '.mov', '.avi', '.webm', '.m4v') else '.mkv'
+            out_path = f"{base}_clean_{label}{out_ext}"
+            if os.path.abspath(out_path) == os.path.abspath(vid):
+                out_path = f"{base}_clean_{label}_out{out_ext}"
             
-            # --- DYNAMIC STREAM ROUTING ---
-            # -map 0: Globally includes all source streams.
-            # -map -0:{stream_type}: A negative map assertion to explicitly reject the target codec class.
-            command = [
-                'ffmpeg', '-i', vid,
-                '-map', '0',                          
-                '-map', f'-0:{stream_type}'           
-            ]
+            # Inspect actual streams available in this specific file
+            file_tracks = self.get_track_info(vid, stream_type)
+            num_tracks = len(file_tracks)
+            valid_indices = [idx for idx in track_indices if 0 <= idx < num_tracks]
+
+            # --- TIER 1: DYNAMIC STREAM ROUTING (-c copy, full streams, -map 0:V? excludes attached cover art) ---
+            command = ['ffmpeg', '-y', '-i', vid]
             
-            # Step 3: Add back ONLY the specific track IDs
-            for idx in track_indices:
-                # We use the provided indices from the UI checkboxes
-                command.extend(['-map', f'0:{stream_type}:{idx}'])
+            if stream_type == 'a':
+                command.extend(['-map', '0:V?', '-map', '0:s?', '-map', '0:t?'])
+                for idx in valid_indices:
+                    command.extend(['-map', f'0:a:{idx}?'])
+            else: # 's'
+                command.extend(['-map', '0:V?', '-map', '0:a?', '-map', '0:t?'])
+                for idx in valid_indices:
+                    command.extend(['-map', f'0:s:{idx}?'])
                 
             command.extend([
                 '-c', 'copy',                         # Packet-level stream copy (Zero decoding).
                 '-ignore_unknown',                    # Suppresses abortions caused by esoteric metadata headers.
                 '-avoid_negative_ts', 'make_zero',    # Shifts PTS/DTS vectors to origin (0) to resolve container desync.
-                '-y', out_path
+                out_path
             ])
             
+            success = False
             try:
-                subprocess.run(command, check=True, capture_output=True)
+                subprocess.run(command, check=True, capture_output=True, text=True)
+                if os.path.exists(out_path) and os.path.getsize(out_path) > 0:
+                    success = True
+            except subprocess.CalledProcessError as e:
+                err_msg = e.stderr.strip()[:300] if e.stderr else 'Unknown error'
+                print(f"    Primary cleaning failed for {os.path.basename(vid)}: {err_msg}")
+                if os.path.exists(out_path):
+                    try:
+                        os.remove(out_path)
+                    except Exception:
+                        pass
+
+                # --- TIER 2 FALLBACK: Drop potentially incompatible subtitle/attachment streams ---
+                command_fb = ['ffmpeg', '-y', '-i', vid]
+                if stream_type == 'a':
+                    command_fb.extend(['-map', '0:V?'])
+                    for idx in valid_indices:
+                        command_fb.extend(['-map', f'0:a:{idx}?'])
+                else:
+                    command_fb.extend(['-map', '0:V?', '-map', '0:a?'])
+                    for idx in valid_indices:
+                        command_fb.extend(['-map', f'0:s:{idx}?'])
+
+                command_fb.extend([
+                    '-c', 'copy',
+                    '-ignore_unknown',
+                    '-avoid_negative_ts', 'make_zero',
+                    out_path
+                ])
+
+                try:
+                    subprocess.run(command_fb, check=True, capture_output=True, text=True)
+                    if os.path.exists(out_path) and os.path.getsize(out_path) > 0:
+                        print(f"    Fallback cleaning (Tier 2) succeeded for {os.path.basename(vid)}")
+                        success = True
+                except subprocess.CalledProcessError as e_fb:
+                    fb_err = e_fb.stderr.strip()[:300] if e_fb.stderr else 'Unknown error'
+                    print(f"    Fallback cleaning (Tier 2) failed for {os.path.basename(vid)}: {fb_err}")
+                    if os.path.exists(out_path):
+                        try:
+                            os.remove(out_path)
+                        except Exception:
+                            pass
+
+                    # --- TIER 3 FALLBACK: Transcode audio/subtitles if stream copy fails ---
+                    command_fb3 = ['ffmpeg', '-y', '-i', vid]
+                    if stream_type == 'a':
+                        command_fb3.extend(['-map', '0:V?'])
+                        for idx in valid_indices:
+                            command_fb3.extend(['-map', f'0:a:{idx}?'])
+                        command_fb3.extend(['-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k'])
+                    else:
+                        command_fb3.extend(['-map', '0:V?', '-map', '0:a?'])
+                        for idx in valid_indices:
+                            command_fb3.extend(['-map', f'0:s:{idx}?'])
+                        command_fb3.extend(['-c:v', 'copy', '-c:a', 'copy', '-c:s', 'srt'])
+
+                    command_fb3.extend([
+                        '-ignore_unknown',
+                        '-avoid_negative_ts', 'make_zero',
+                        out_path
+                    ])
+
+                    try:
+                        subprocess.run(command_fb3, check=True, capture_output=True, text=True)
+                        if os.path.exists(out_path) and os.path.getsize(out_path) > 0:
+                            print(f"    Fallback cleaning (Tier 3) succeeded for {os.path.basename(vid)}")
+                            success = True
+                    except subprocess.CalledProcessError as e_fb3:
+                        fb3_err = e_fb3.stderr.strip()[:300] if e_fb3.stderr else 'Unknown error'
+                        print(f"    Fallback cleaning (Tier 3) failed for {os.path.basename(vid)}: {fb3_err}")
+                        if os.path.exists(out_path):
+                            try:
+                                os.remove(out_path)
+                            except Exception:
+                                pass
+
+                        # --- TIER 4 FALLBACK: Full video/audio re-encode for corrupt/problematic containers ---
+                        command_fb4 = ['ffmpeg', '-y', '-i', vid]
+                        if stream_type == 'a':
+                            command_fb4.extend(['-map', '0:V?'])
+                            for idx in valid_indices:
+                                command_fb4.extend(['-map', f'0:a:{idx}?'])
+                            command_fb4.extend(['-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '23', '-c:a', 'aac', '-b:a', '192k'])
+                        else:
+                            command_fb4.extend(['-map', '0:V?', '-map', '0:a?'])
+                            for idx in valid_indices:
+                                command_fb4.extend(['-map', f'0:s:{idx}?'])
+                            command_fb4.extend(['-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '23', '-c:a', 'copy', '-c:s', 'srt'])
+
+                        command_fb4.extend([
+                            '-ignore_unknown',
+                            '-avoid_negative_ts', 'make_zero',
+                            out_path
+                        ])
+
+                        try:
+                            subprocess.run(command_fb4, check=True, capture_output=True, text=True)
+                            if os.path.exists(out_path) and os.path.getsize(out_path) > 0:
+                                print(f"    Fallback cleaning (Tier 4) succeeded for {os.path.basename(vid)}")
+                                success = True
+                        except subprocess.CalledProcessError as e_fb4:
+                            fb4_err = e_fb4.stderr.strip()[:300] if e_fb4.stderr else 'Unknown error'
+                            print(f"    Fallback cleaning (Tier 4) failed for {os.path.basename(vid)}: {fb4_err}")
+                            if os.path.exists(out_path):
+                                try:
+                                    os.remove(out_path)
+                                except Exception:
+                                    pass
+
+            if success:
                 print(f"    Saved: {os.path.basename(out_path)}")
                 success_count += 1
-            except subprocess.CalledProcessError as e:
+            else:
                 print(f"    Failed: {os.path.basename(vid)}")
 
         print("-" * 40)

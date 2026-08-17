@@ -12,20 +12,16 @@ class VideoDivider:
         segment_time can be seconds ('30') or HH:MM:SS ('00:00:30').
         """
         # --- FILENAME & PATH LOGIC ---
-        # Extracts original name and sets a pattern like 'Movie_part001.mp4'
-        filename = os.path.splitext(os.path.basename(input_path))[0]
-        output_pattern = os.path.join(os.path.dirname(input_path), f"{filename}_part%03d.mp4")
+        # Preserve original container extension (.mkv, .webm, .mp4, etc.) to prevent codec mismatch errors
+        base_name, ext = os.path.splitext(os.path.basename(input_path))
+        if not ext:
+            ext = ".mp4"
+        output_pattern = os.path.join(os.path.dirname(input_path), f"{base_name}_part%03d{ext}")
         
-        # --- FFmpeg SEGMENT COMMAND ---
-        # -map 0: Keeps all Audio and Subtitles.
-        # -c copy: Zero quality loss.
-        # -reset_timestamps 1: Essential for standalone playback of chunks.
-        # -avoid_negative_ts make_zero: UPGRADE - Ensures chunks join perfectly later by shifting PTS/DTS to 0.
-        # 🚀 UPGRADE: Conditionally apply subtitle safeguard by evaluating global settings.
-        maps = ['-map', '0:V', '-map', '0:a?'] if SettingsManager.should_safeguard_subtitles() else ['-map', '0:V', '-map', '0:a?', '-map', '0:s?']
+        maps = ['-map', '0:v', '-map', '0:a?'] if SettingsManager.should_safeguard_subtitles() else ['-map', '0:v', '-map', '0:a?', '-map', '0:s?']
         
         command = [
-            'ffmpeg', '-i', input_path, 
+            'ffmpeg', '-fflags', '+genpts', '-i', input_path, 
         ] + maps + [
             '-c', 'copy', 
             '-f', 'segment',                  # Engage the segment muxer to split the file dynamically based on time.
@@ -38,12 +34,17 @@ class VideoDivider:
         
         try:
             print(f"  VidFlow Division: Dividing into chunks of {segment_time}...")
-            # Capture standard output and error to prevent CLI spam while ensuring errors are identifiable via CalledProcessError.
-            subprocess.run(command, check=True, capture_output=True)
+            startupinfo = None
+            if os.name == 'nt':
+                startupinfo = subprocess.STARTUPINFO()
+                startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                startupinfo.wShowWindow = subprocess.SW_HIDE
+
+            subprocess.run(command, check=True, capture_output=True, startupinfo=startupinfo)
             
             # ---> TIME MACHINE LOGGING <---
             if run_id:
-                search_pattern = os.path.join(os.path.dirname(input_path), f"{filename}_part*.mp4")
+                search_pattern = os.path.join(os.path.dirname(input_path), f"{base_name}_part*{ext}")
                 for generated_file in glob.glob(search_pattern):
                     TimeMachine.log_action("Video Divider", run_id, "SPLIT_CHUNK", input_path, generated_file, op_type="CREATE")
             
@@ -58,43 +59,46 @@ class VideoDivider:
         Splits a video into exactly two parts at the specified timestamp.
         split_time can be seconds ('3600') or HH:MM:SS ('01:00:00').
         """
-        # --- NAMING & DIRECTORY LOGIC ---
-        # Preserves the directory and creates specific "First_Half" and "Second_Half" files.
         base_name, ext = os.path.splitext(os.path.basename(input_path))
+        if not ext:
+            ext = ".mp4"
         output_dir = os.path.dirname(input_path)
         
         out1 = os.path.join(output_dir, f"{base_name}_First_Half{ext}")
         out2 = os.path.join(output_dir, f"{base_name}_Second_Half{ext}")
 
         try:
+            maps = ['-map', '0:v', '-map', '0:a?'] if SettingsManager.should_safeguard_subtitles() else ['-map', '0:v', '-map', '0:a?', '-map', '0:s?']
+            
+            startupinfo = None
+            if os.name == 'nt':
+                startupinfo = subprocess.STARTUPINFO()
+                startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                startupinfo.wShowWindow = subprocess.SW_HIDE
+
             # --- PART 1 GENERATION ---
             print(f"  Generating Part 1 (Start -> {split_time})...")
-            # Uses -to for precise ending point.
-            # 🚀 UPGRADE: Conditionally apply subtitle safeguard
-            maps = ['-map', '0:V', '-map', '0:a?'] if SettingsManager.should_safeguard_subtitles() else ['-map', '0:V', '-map', '0:a?', '-map', '0:s?']
-            
             cmd1 = [
-                'ffmpeg', '-i', input_path, 
+                'ffmpeg', '-fflags', '+genpts', '-i', input_path, 
                 '-to', split_time, 
             ] + maps + [
                 '-c', 'copy', 
                 '-avoid_negative_ts', 'make_zero', 
                 '-ignore_unknown', '-y', out1
             ]
-            subprocess.run(cmd1, check=True, capture_output=True)
+            subprocess.run(cmd1, check=True, capture_output=True, startupinfo=startupinfo)
 
             # --- PART 2 GENERATION ---
             print(f"  Generating Part 2 ({split_time} -> End)...")
-            # Uses -ss BEFORE -i for the fastest input-seeking to the second half, snapping to the nearest I-frame.
             cmd2 = [
-                'ffmpeg', '-ss', split_time, 
+                'ffmpeg', '-fflags', '+genpts', '-ss', split_time, 
                 '-i', input_path, 
             ] + maps + [
                 '-c', 'copy', 
                 '-avoid_negative_ts', 'make_zero', 
                 '-ignore_unknown', '-y', out2
             ]
-            subprocess.run(cmd2, check=True, capture_output=True)
+            subprocess.run(cmd2, check=True, capture_output=True, startupinfo=startupinfo)
             
             # ---> TIME MACHINE LOGGING <---
             if run_id:

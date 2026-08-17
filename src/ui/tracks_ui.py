@@ -4,6 +4,7 @@ from PyQt6.QtCore import Qt
 from src.ui.custom_widgets import DropZone, SmartRunButton
 from src.processors.tracks import TrackProcessor # Import your class
 import os
+import glob
 
 class TrackCleanerUI(QWidget):
     """The Visual Dashboard for Feature 2 (Audio) and Feature 3 (Subtitles)"""
@@ -49,12 +50,14 @@ class TrackCleanerUI(QWidget):
         layout.addSpacing(15)
 
         # --- DROP ZONE ---
-        self.drop_zone = DropZone(self)
+        self.drop_zone = DropZone(self, mode='both')
         self.drop_zone.file_input.textChanged.connect(self.refresh_tracks)
         layout.addWidget(self.drop_zone)
 
         layout.addSpacing(15)
-        layout.addWidget(QLabel("Step 2: Select the tracks you wish to PRESERVE:"))
+        self.step2_label = QLabel("Step 2: Select the tracks you wish to PRESERVE:")
+        self.step2_label.setStyleSheet("font-size: 14px; color: #ccc;")
+        layout.addWidget(self.step2_label)
 
         # --- DYNAMIC CHECKBOX LIST ---
         self.scroll = QScrollArea()
@@ -74,9 +77,9 @@ class TrackCleanerUI(QWidget):
         layout.addWidget(self.exec_btn)
 
     def refresh_tracks(self):
-        """Called when a file is dropped. Uses your get_track_info logic."""
+        """Called when a file or folder is dropped. Uses your get_track_info logic."""
         path = self.drop_zone.file_input.text().strip()
-        if not path or not os.path.isfile(path): return
+        if not path or not os.path.exists(path): return
 
         # Clear existing list
         for cb in self.checkboxes:
@@ -84,15 +87,31 @@ class TrackCleanerUI(QWidget):
             cb.deleteLater()
         self.checkboxes.clear()
 
+        sample_path = path
+        if os.path.isdir(path):
+            valid_exts = ('.mkv', '.mp4', '.avi', '.mov', '.webm')
+            video_files = [os.path.join(path, f) for f in os.listdir(path) if f.lower().endswith(valid_exts)]
+            video_files = [f for f in video_files if os.path.isfile(f)]
+            if not video_files:
+                self.step2_label.setText("Step 2: Select tracks to PRESERVE (❌ No video files found in folder):")
+                return
+            video_files.sort()
+            sample_path = video_files[0]
+            self.step2_label.setText(f"Step 2: Select tracks to PRESERVE (📁 Batch Folder mode: detected {len(video_files)} videos using layout from '{os.path.basename(sample_path)}'):")
+        elif os.path.isfile(path):
+            self.step2_label.setText("Step 2: Select the tracks you wish to PRESERVE:")
+        else:
+            return
+
         # Call YOUR original ffprobe logic
-        raw_tracks = self.processor.get_track_info(path, self.mode)
+        raw_tracks = self.processor.get_track_info(sample_path, self.mode)
         
         for i, t in enumerate(raw_tracks):
             lang = t.get('tags', {}).get('language', 'und')
-            title = t.get('tags', {}).get('title', 'Track')
+            title = t.get('tags', {}).get('title', f'Track {i+1}')
             idx = t.get('index')
             
-            cb = QCheckBox(f"Index {idx} | Language: {lang} | Title: {title}")
+            cb = QCheckBox(f"Track #{i+1} (Stream {idx}) | Language: {lang} | Title: {title}")
             cb.setProperty("track_id", i) # We use the relative ID for FFmpeg mapping
             cb.setChecked(True)
             cb.setStyleSheet("font-size: 14px; padding: 5px;")
@@ -102,7 +121,7 @@ class TrackCleanerUI(QWidget):
     def get_input_paths(self):
         input_path = self.drop_zone.file_input.text().strip()
         keep_ids = [cb.property("track_id") for cb in self.checkboxes if cb.isChecked()]
-        if not input_path or not keep_ids:
+        if not input_path or not os.path.exists(input_path):
             return None
         return input_path
 
@@ -110,11 +129,14 @@ class TrackCleanerUI(QWidget):
         input_path = self.get_input_paths()
         keep_ids = [cb.property("track_id") for cb in self.checkboxes if cb.isChecked()]
 
-        filename = os.path.basename(input_path)
+        filename = os.path.basename(input_path) or input_path
         track_type = "Audio" if self.mode == 'a' else "Subtitle"
         def task():
-            self.processor.process_batch(input_path, keep_ids, self.mode)
-            return True, f"Track purge finished successfully for: {filename}"
+            success = self.processor.process_batch(input_path, keep_ids, self.mode)
+            if success:
+                return True, f"Track purge finished successfully for: {filename}"
+            else:
+                return False, f"Track purge failed for: {filename}. Check logs for details."
 
         self.orchestrator.add_background_job(f"Purge {track_type} Tracks: {filename}", task, estimated_seconds=est_seconds, local_widget=self.exec_btn)
         self.orchestrator.show_status_message(f"⏳ Purge job queued for: {filename}")

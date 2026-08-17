@@ -1,4 +1,37 @@
 import sys
+import os
+
+# Suppress verbose Qt Multimedia FFmpeg decoder and DirectShow camera warnings
+os.environ["QT_LOGGING_RULES"] = "qt.multimedia.*=false;qt.multimedia.ffmpeg.*=false"
+os.environ["OPENCV_FFMPEG_LOGLEVEL"] = "-8"
+os.environ["OPENCV_LOG_LEVEL"] = "SILENT"
+os.environ["AV_LOG_FORCE_NOCOLOR"] = "1"
+
+# Redirect C-level file descriptor 2 (sys.stderr fileno) to os.devnull so C DLLs
+# (e.g. qmedia_ffmpeg.dll / avcodec.dll) cannot flood the console with mjpeg/png warnings.
+try:
+    _orig_stderr_fd = os.dup(2)
+    _devnull_file = open(os.devnull, 'w')
+    os.dup2(_devnull_file.fileno(), 2)
+    _orig_stderr_stream = os.fdopen(_orig_stderr_fd, 'w')
+except Exception:
+    _orig_stderr_stream = sys.stderr
+
+class _CleanStderrFilter:
+    def __init__(self, target):
+        self.target = target
+    def write(self, msg):
+        if any(ignore in msg for ignore in ("[mjpeg @", "[png @", "unable to decode APP fields", "No JPEG data found in image", "env_facs_q")):
+            return
+        if self.target:
+            self.target.write(msg)
+    def flush(self):
+        if self.target:
+            self.target.flush()
+
+if hasattr(sys, "stderr") and not isinstance(sys.stderr, _CleanStderrFilter):
+    sys.stderr = _CleanStderrFilter(_orig_stderr_stream)
+
 from PyQt6.QtWidgets import QApplication
 import qdarktheme
 from gui_main import MasterOrchestrator

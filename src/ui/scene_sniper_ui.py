@@ -214,13 +214,8 @@ class SceneSniperUI(QWidget):
         self.player_container.setMinimumHeight(250)
         layout.addWidget(self.player_container, stretch=1)
 
-        self.media_player = QMediaPlayer()
-        self.audio_output = QAudioOutput()
-        self.media_player.setAudioOutput(self.audio_output)
-        self.media_player.setVideoOutput(self.video_widget)
-
-        self.media_player.positionChanged.connect(self.position_changed)
-        self.media_player.durationChanged.connect(self.duration_changed)
+        self.media_player = None
+        self.audio_output = None
         layout.addSpacing(20)
 
         # Execution Button
@@ -235,14 +230,30 @@ class SceneSniperUI(QWidget):
             return None
         return file_path
 
+    def ensure_player(self):
+        if self.media_player is None:
+            self.media_player = QMediaPlayer()
+            self.audio_output = QAudioOutput()
+            self.media_player.setAudioOutput(self.audio_output)
+            self.media_player.setVideoOutput(self.video_widget)
+            self.media_player.positionChanged.connect(self.position_changed)
+            self.media_player.durationChanged.connect(self.duration_changed)
+        return self.media_player
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        self.ensure_player()
+
     # --- VIDEO PLAYER LOGIC ---
     def load_video(self, file_path):
         if file_path and os.path.isfile(file_path):
+            self.ensure_player()
             self.media_player.setSource(QUrl.fromLocalFile(file_path))
             self.media_player.play()
             self.play_btn.setText("⏸")
 
     def toggle_playback(self):
+        self.ensure_player()
         if self.media_player.playbackState() == QMediaPlayer.PlaybackState.PlayingState:
             self.media_player.pause()
             self.play_btn.setText("▶")
@@ -253,11 +264,13 @@ class SceneSniperUI(QWidget):
             self.flash_indicator.show_flash("▶", self.video_widget.rect(), self.video_widget.mapToGlobal(self.video_widget.rect().topLeft()))
 
     def toggle_mute(self):
+        self.ensure_player()
         is_muted = self.audio_output.isMuted()
         self.audio_output.setMuted(not is_muted)
         self.mute_btn.setText("🔇" if not is_muted else "🔊")
 
     def set_volume(self, value):
+        self.ensure_player()
         self.audio_output.setVolume(value / 100.0)
         if value == 0:
             self.mute_btn.setText("🔇")
@@ -280,28 +293,37 @@ class SceneSniperUI(QWidget):
             super().keyPressEvent(event)
 
     def skip_backward(self):
+        if self.media_player is None:
+            return
         new_pos = max(0, self.media_player.position() - 10000)
         self.media_player.setPosition(new_pos)
         self.flash_indicator.show_flash("⏪", self.video_widget.rect(), self.video_widget.mapToGlobal(self.video_widget.rect().topLeft()))
 
     def skip_forward(self):
+        if self.media_player is None:
+            return
         new_pos = min(self.media_player.duration(), self.media_player.position() + 10000)
         self.media_player.setPosition(new_pos)
         self.flash_indicator.show_flash("⏩", self.video_widget.rect(), self.video_widget.mapToGlobal(self.video_widget.rect().topLeft()))
 
     def position_changed(self, position):
+        if self.media_player is None:
+            return
         self.timeline_slider.setValue(position)
         current = self.format_time(position)[:8]
         total = self.format_time(self.media_player.duration())[:8]
         self.time_label.setText(f"{current} / {total}")
 
     def duration_changed(self, duration):
+        if self.media_player is None:
+            return
         self.timeline_slider.setRange(0, duration)
         total = self.format_time(duration)[:8]
         self.time_label.setText(f"00:00:00 / {total}")
 
     def set_position(self, position):
-        self.media_player.setPosition(position)
+        if self.media_player is not None:
+            self.media_player.setPosition(position)
 
     def format_time(self, ms):
         seconds = (ms // 1000) % 60
@@ -311,11 +333,11 @@ class SceneSniperUI(QWidget):
         return f"{hours:02d}:{minutes:02d}:{seconds:02d}.{milliseconds:03d}"
 
     def set_in_point(self):
-        pos = self.media_player.position()
+        pos = self.media_player.position() if self.media_player else 0
         self.start_input.setText(self.format_time(pos))
 
     def set_out_point(self):
-        pos = self.media_player.position()
+        pos = self.media_player.position() if self.media_player else 0
         self.end_input.setText(self.format_time(pos))
 
     def execute_sniper(self, inputs, est_seconds):

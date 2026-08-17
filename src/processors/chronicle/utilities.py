@@ -13,7 +13,7 @@ def flatten_directory(folder_path, run_id=None):
     print(f"\n🚜 Igniting Deep Scavenger in '{folder_path}'...")
     print("-" * 50)
     
-    valid_exts = ('.mkv', '.mp4', '.avi', '.m4v', '.srt', '.ass', '.vtt')
+    valid_exts = ('.mkv', '.mp4', '.avi', '.mov', '.webm', '.flv', '.wmv', '.m4v', '.srt', '.ass', '.vtt')
     moved_count = 0
     
     for root, dirs, files in os.walk(folder_path, topdown=False):
@@ -56,7 +56,7 @@ def pack_volumes(folder_path, show_name, max_size_gb, run_id=None):
     print("-" * 50)
     
     max_bytes = max_size_gb * 1024 * 1024 * 1024
-    valid_exts = ('.mkv', '.mp4', '.avi', '.m4v', '.srt', '.ass', '.vtt')
+    valid_exts = ('.mkv', '.mp4', '.avi', '.mov', '.webm', '.flv', '.wmv', '.m4v', '.srt', '.ass', '.vtt')
     
     # files.sort() guarantees the files are processed in alphabetical order by name!
     files = [f for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f)) and f.lower().endswith(valid_exts)]

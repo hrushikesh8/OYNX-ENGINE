@@ -9,3 +9,6 @@ requests==2.31.0
 
 # Optional AI Transcription feature
 openai-whisper>=20231117
+
+# Subtitle fetching
+subliminal>=2.1.0

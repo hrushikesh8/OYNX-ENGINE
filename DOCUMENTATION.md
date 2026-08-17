@@ -54,6 +54,13 @@ This is the most advanced module in the engine, replicating a non-linear video e
 *   **Process**: Joining multiple clips sequentially without re-encoding.
 *   **Mechanism**: Employs FFmpeg's "concat demuxer". It generates a temporary `mylist.txt` file listing the file paths in order. FFmpeg then reads this file (`-f concat -i mylist.txt`) and stream copies (`-c copy`) them into a single file. This only works if all clips have identical codecs, resolutions, and framerates.
 
+### 9. Stream Merger & Multi-Subtitle Muxer (`merger.py`, `merger_ui.py`)
+*   **Process**: Multiplexing video with external audio streams or subtitle tracks.
+*   **Features**:
+    *   *Single-File Muxing*: Pair 1 video file with 1 audio or subtitle file.
+    *   *1:1 Smart Folder Mode*: Scan folder and auto-match videos and subtitle/audio files with matching names.
+    *   *Multi-Subtitle Folder Mode*: Scan folder containing 1 video file and multiple subtitle files (`.srt`, `.ass`, `.vtt`) with any filenames, and mux ALL subtitle tracks into the video file simultaneously with track titles derived from filenames.
+
 ---
 
 ## ⚡ UI/UX and Asynchronous Workflow

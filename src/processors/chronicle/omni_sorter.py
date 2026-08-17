@@ -28,7 +28,7 @@ def process_omni_dump(dump_folder, dry_run=True, run_id=None):
     print(f"\n🌪️ Igniting Omni-Sorter for: '{dump_folder}'")
     print("-" * 50)
     
-    valid_exts = ('.mkv', '.mp4', '.avi', '.m4v', '.srt', '.ass')
+    valid_exts = ('.mkv', '.mp4', '.avi', '.mov', '.webm', '.flv', '.wmv', '.m4v', '.srt', '.ass', '.vtt')
     
     try:
         files = [f for f in os.listdir(dump_folder) if os.path.isfile(os.path.join(dump_folder, f)) and f.lower().endswith(valid_exts)]

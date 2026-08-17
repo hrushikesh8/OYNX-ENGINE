@@ -130,9 +130,9 @@ class CustomTitleBar(QWidget):
         self.btn_maximize.setStyleSheet("QPushButton { background: transparent; border: none; font-size: 14px; } QPushButton:hover { background: rgba(255, 255, 255, 0.1); }")
         self.btn_close.setStyleSheet("QPushButton { background: transparent; border: none; font-size: 14px; } QPushButton:hover { background: #d92d2d; }")
 
-        self.btn_minimize.clicked.connect(self.parent.showMinimized)
+        self.btn_minimize.clicked.connect(self.minimize_window)
         self.btn_maximize.clicked.connect(self.toggle_maximize)
-        self.btn_close.clicked.connect(self.parent.close)
+        self.btn_close.clicked.connect(self.close_window)
 
         # Assemble Layout
         self.layout.addWidget(self.icon_label)
@@ -147,21 +147,33 @@ class CustomTitleBar(QWidget):
         # Variables for window dragging
         self.drag_position = QPoint()
 
-    def toggle_maximize(self):
-        if self.parent.isMaximized():
-            self.parent.showNormal()
-            self.btn_maximize.setText("◻")
-        else:
-            self.parent.showMaximized()
+    def minimize_window(self):
+        self.window().showMinimized()
+
+    def close_window(self):
+        self.window().close()
+
+    def update_maximize_button(self):
+        if self.window().isMaximized():
             self.btn_maximize.setText("❐")
+        else:
+            self.btn_maximize.setText("◻")
+
+    def toggle_maximize(self):
+        win = self.window()
+        if win.isMaximized():
+            win.showNormal()
+        else:
+            win.showMaximized()
+        self.update_maximize_button()
 
     def toggle_fullscreen(self):
-        if self.parent.isFullScreen():
-            self.parent.showNormal()
-            self.btn_maximize.setText("◻")
+        win = self.window()
+        if win.isFullScreen():
+            win.showNormal()
         else:
-            self.parent.showFullScreen()
-            self.btn_maximize.setText("❐")
+            win.showFullScreen()
+        self.update_maximize_button()
 
     def open_docs(self):
         import os
@@ -176,7 +188,7 @@ class CustomTitleBar(QWidget):
         from PyQt6.QtGui import QPixmap
         from PyQt6.QtCore import Qt
         import os
-        msg = QMessageBox(self.parent)
+        msg = QMessageBox(self.window())
         msg.setWindowTitle("About Onyx Engine")
         msg.setText("Onyx Engine v3.0\nProfessional Production Suite\n\nAdvanced tool for video, audio, and AI processing workflows.")
         msg.setStyleSheet("QMessageBox { background-color: #1e1e1e; color: white; } QLabel { color: white; } QPushButton { background-color: #333; color: white; padding: 5px 15px; }")
@@ -190,13 +202,15 @@ class CustomTitleBar(QWidget):
 
     def mousePressEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton:
-            self.drag_position = event.globalPosition().toPoint() - self.parent.frameGeometry().topLeft()
+            self.drag_position = event.globalPosition().toPoint() - self.window().frameGeometry().topLeft()
             event.accept()
 
     def mouseMoveEvent(self, event):
         if event.buttons() == Qt.MouseButton.LeftButton:
-            self.parent.move(event.globalPosition().toPoint() - self.drag_position)
-            event.accept()
+            win = self.window()
+            if not win.isMaximized():
+                win.move(event.globalPosition().toPoint() - self.drag_position)
+                event.accept()
 
     def mouseDoubleClickEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton:

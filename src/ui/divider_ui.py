@@ -157,12 +157,8 @@ class DividerUI(QWidget):
         self.player_container.setMinimumHeight(250)
         t_layout.addWidget(self.player_container, stretch=1)
         
-        self.media_player = QMediaPlayer()
-        self.audio_output = QAudioOutput()
-        self.media_player.setAudioOutput(self.audio_output)
-        self.media_player.setVideoOutput(self.video_widget)
-        self.media_player.positionChanged.connect(self.position_changed)
-        self.media_player.durationChanged.connect(self.duration_changed)
+        self.media_player = None
+        self.audio_output = None
 
         t_layout.addSpacing(15)
 
@@ -178,14 +174,30 @@ class DividerUI(QWidget):
 
         self.tabs.addTab(tab, "⏸️ Intermission Cut")
 
+    def ensure_player(self):
+        if self.media_player is None:
+            self.media_player = QMediaPlayer()
+            self.audio_output = QAudioOutput()
+            self.media_player.setAudioOutput(self.audio_output)
+            self.media_player.setVideoOutput(self.video_widget)
+            self.media_player.positionChanged.connect(self.position_changed)
+            self.media_player.durationChanged.connect(self.duration_changed)
+        return self.media_player
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        self.ensure_player()
+
     # --- VIDEO PLAYER LOGIC ---
     def load_video(self, file_path):
         if file_path and os.path.isfile(file_path):
+            self.ensure_player()
             self.media_player.setSource(QUrl.fromLocalFile(file_path))
             self.media_player.play()
             self.play_btn.setText("⏸")
 
     def toggle_playback(self):
+        self.ensure_player()
         if self.media_player.playbackState() == QMediaPlayer.PlaybackState.PlayingState:
             self.media_player.pause()
             self.play_btn.setText("▶")
@@ -197,11 +209,13 @@ class DividerUI(QWidget):
             self.flash_indicator.show_flash("▶", self.video_widget.rect(), self.video_widget.mapToGlobal(self.video_widget.rect().topLeft()))
 
     def toggle_mute(self):
+        self.ensure_player()
         is_muted = self.audio_output.isMuted()
         self.audio_output.setMuted(not is_muted)
         self.mute_btn.setText("🔇" if not is_muted else "🔊")
 
     def set_volume(self, value):
+        self.ensure_player()
         self.audio_output.setVolume(value / 100.0)
         if value == 0:
             self.mute_btn.setText("🔇")
@@ -210,19 +224,24 @@ class DividerUI(QWidget):
             self.mute_btn.setText("🔊")
 
     def set_position(self, position):
-        self.media_player.setPosition(position)
+        if self.media_player is not None:
+            self.media_player.setPosition(position)
 
     def position_changed(self, position):
+        if self.media_player is None:
+            return
         self.timeline_slider.setValue(position)
         self.update_time_label()
 
     def duration_changed(self, duration):
+        if self.media_player is None:
+            return
         self.timeline_slider.setRange(0, duration)
         self.update_time_label()
 
     def update_time_label(self):
-        pos = self.media_player.position()
-        dur = self.media_player.duration()
+        pos = self.media_player.position() if self.media_player else 0
+        dur = self.media_player.duration() if self.media_player else 0
         def format_time(ms):
             s = ms // 1000
             m, s = divmod(s, 60)
@@ -231,7 +250,7 @@ class DividerUI(QWidget):
         self.time_label.setText(f"{format_time(pos)} / {format_time(dur)}")
 
     def set_intermission_point(self):
-        ms = self.media_player.position()
+        ms = self.media_player.position() if self.media_player else 0
         s = ms / 1000.0
         m, s = divmod(s, 60)
         h, m = divmod(m, 60)
@@ -270,11 +289,15 @@ class DividerUI(QWidget):
             super().keyPressEvent(event)
 
     def skip_backward(self):
+        if self.media_player is None:
+            return
         new_pos = max(0, self.media_player.position() - 10000)
         self.media_player.setPosition(new_pos)
         self.flash_indicator.show_flash("⏪", self.video_widget.rect(), self.video_widget.mapToGlobal(self.video_widget.rect().topLeft()))
 
     def skip_forward(self):
+        if self.media_player is None:
+            return
         new_pos = min(self.media_player.duration(), self.media_player.position() + 10000)
         self.media_player.setPosition(new_pos)
         self.flash_indicator.show_flash("⏩", self.video_widget.rect(), self.video_widget.mapToGlobal(self.video_widget.rect().topLeft()))

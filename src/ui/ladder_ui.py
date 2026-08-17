@@ -201,18 +201,10 @@ class StreamLadderUI(QWidget):
         player_grid.addWidget(self.video_widget_b, 0, 1)
         t_layout.addLayout(player_grid, stretch=1)
 
-        # Synchronized Media Players Setup
-        self.player_a = QMediaPlayer()
-        self.audio_output_a = QAudioOutput()
-        self.player_a.setAudioOutput(self.audio_output_a)
-        self.player_a.setVideoOutput(self.video_widget_a)
-
-        self.player_b = QMediaPlayer()
-        self.audio_output_b = QAudioOutput()
-        self.player_b.setAudioOutput(self.audio_output_b)
-        # Mute Player B by default to prevent audio overlap/echo
-        self.audio_output_b.setMuted(True)
-        self.player_b.setVideoOutput(self.video_widget_b)
+        self.player_a = None
+        self.audio_output_a = None
+        self.player_b = None
+        self.audio_output_b = None
 
         # VLC-Style Synced Control Bar
         control_bar = QFrame()
@@ -265,22 +257,43 @@ class StreamLadderUI(QWidget):
 
         t_layout.addWidget(control_bar)
 
-        # Hook position signals
-        self.player_a.positionChanged.connect(self.sync_position_changed)
-        self.player_a.durationChanged.connect(self.sync_duration_changed)
+        # Hook position signals added on player ensure
 
         self.tabs.addTab(tab, "🎞️ Video Quality Comparer")
+
+    def ensure_players(self):
+        if self.player_a is None:
+            self.player_a = QMediaPlayer()
+            self.audio_output_a = QAudioOutput()
+            self.player_a.setAudioOutput(self.audio_output_a)
+            self.player_a.setVideoOutput(self.video_widget_a)
+            self.player_a.positionChanged.connect(self.sync_position_changed)
+            self.player_a.durationChanged.connect(self.sync_duration_changed)
+
+        if self.player_b is None:
+            self.player_b = QMediaPlayer()
+            self.audio_output_b = QAudioOutput()
+            self.player_b.setAudioOutput(self.audio_output_b)
+            self.audio_output_b.setMuted(True)
+            self.player_b.setVideoOutput(self.video_widget_b)
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        self.ensure_players()
 
     # --- SYNCHRONIZED PLAYER ACTIONS ---
     def load_video_a(self, path):
         if path and os.path.isfile(path):
+            self.ensure_players()
             self.player_a.setSource(QUrl.fromLocalFile(path))
 
     def load_video_b(self, path):
         if path and os.path.isfile(path):
+            self.ensure_players()
             self.player_b.setSource(QUrl.fromLocalFile(path))
 
     def toggle_sync_playback(self):
+        self.ensure_players()
         if self.player_a.playbackState() == QMediaPlayer.PlaybackState.PlayingState:
             self.player_a.pause()
             self.player_b.pause()
@@ -291,10 +304,13 @@ class StreamLadderUI(QWidget):
             self.play_btn.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPause))
 
     def set_sync_position(self, pos):
-        self.player_a.setPosition(pos)
-        self.player_b.setPosition(pos)
+        if self.player_a is not None and self.player_b is not None:
+            self.player_a.setPosition(pos)
+            self.player_b.setPosition(pos)
 
     def sync_position_changed(self, position):
+        if self.player_a is None or self.player_b is None:
+            return
         self.timeline_slider.setValue(position)
         # Check alignment: if they drift by > 150ms, force resync
         if abs(self.player_a.position() - self.player_b.position()) > 150:
@@ -305,19 +321,24 @@ class StreamLadderUI(QWidget):
         self.time_label.setText(f"{current} / {total}")
 
     def sync_duration_changed(self, duration):
+        if self.player_a is None:
+            return
         self.timeline_slider.setRange(0, duration)
 
     def toggle_mute_a(self):
+        self.ensure_players()
         is_muted = self.audio_output_a.isMuted()
         self.audio_output_a.setMuted(not is_muted)
         self.mute_a_btn.setText("🔇 Muted Left" if not is_muted else "🔊 Mute Left")
 
     def toggle_mute_b(self):
+        self.ensure_players()
         is_muted = self.audio_output_b.isMuted()
         self.audio_output_b.setMuted(not is_muted)
         self.mute_b_btn.setText("🔊 Mute Right" if not is_muted else "🔇 Muted Right")
 
     def set_volume_a(self, value):
+        self.ensure_players()
         self.audio_output_a.setVolume(value / 100.0)
         if value == 0:
             self.mute_a_btn.setText("🔇 Muted Left")
@@ -326,6 +347,7 @@ class StreamLadderUI(QWidget):
             self.mute_a_btn.setText("🔊 Mute Left")
 
     def set_volume_b(self, value):
+        self.ensure_players()
         self.audio_output_b.setVolume(value / 100.0)
         if value == 0:
             self.mute_b_btn.setText("🔇 Muted Right")
@@ -341,8 +363,10 @@ class StreamLadderUI(QWidget):
 
     def closeEvent(self, event):
         # Prevent leaking player audio/video loops
-        self.player_a.stop()
-        self.player_b.stop()
+        if self.player_a is not None:
+            self.player_a.stop()
+        if self.player_b is not None:
+            self.player_b.stop()
         super().closeEvent(event)
 
 

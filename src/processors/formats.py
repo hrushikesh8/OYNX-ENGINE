@@ -22,40 +22,57 @@ class FormatMapper:
     }
 
     def convert_video(self, input_path: str, output_folder: str, target_format: str, run_id: str | None = None) -> dict:
-        """Helper function to convert a single file using a resilient 3-Tier Fallback Strategy."""
+        """Helper function to convert a single file using a resilient 5-Tier Ultra-Fast Strategy."""
         filename = Path(input_path).stem
         output_path = os.path.join(output_folder, f"{filename}.{target_format}")
         
-        # Retrieve container encoding directives
-        base_flags = self.FORMAT_RULES.get(target_format, ['-c', 'copy'])
-        
+        encoder = SettingsManager.get_video_encoder()
+        audio_bitrate = SettingsManager.get_audio_bitrate()
+
         # Decide stream mapping based on Subtitle Safeguard setting
         if SettingsManager.should_safeguard_subtitles():
-            tier1_map = ['-map', '0:v:0', '-map', '0:a?']
+            tier_map = ['-map', '0:v:0', '-map', '0:a?']
         else:
-            tier1_map = ['-map', '0:v:0', '-map', '0:a?', '-map', '0:s?']
+            tier_map = ['-map', '0:v:0', '-map', '0:a?', '-map', '0:s?']
 
-        # Tier 1: Fast Transmux (stream copy with container-compatible subtitle conversion)
-        cmd_tier1 = ['ffmpeg', '-i', input_path, *tier1_map, *base_flags, '-ignore_unknown', '-y', output_path]
+        # Tier 1: Pure Stream Copy with Timestamp Normalization (Instant ~2s, clean index for VLC seeking)
+        cmd_tier1 = ['ffmpeg', '-fflags', '+genpts', '-i', input_path, *tier_map, '-c:v', 'copy', '-c:a', 'copy', '-avoid_negative_ts', 'make_zero', '-ignore_unknown', '-y', output_path]
         
-        # Tier 2: Safe Stream Copy (drop subtitles & attachments, copy video, transcode audio to AAC)
-        cmd_tier2 = ['ffmpeg', '-i', input_path, '-map', '0:v:0', '-map', '0:a?', '-c:v', 'copy', '-c:a', 'aac', '-ignore_unknown', '-y', output_path]
+        # Tier 2: Video Stream Copy + AAC Audio Transcode (Video copied, audio to AAC ~5s, clean index)
+        cmd_tier2 = ['ffmpeg', '-fflags', '+genpts', '-i', input_path, '-map', '0:v:0', '-map', '0:a?', '-c:v', 'copy', '-c:a', 'aac', '-b:a', audio_bitrate, '-avoid_negative_ts', 'make_zero', '-ignore_unknown', '-y', output_path]
         
-        # Tier 3: Universal Transcode (re-encode video to H.264 & audio to AAC)
-        cmd_tier3 = ['ffmpeg', '-i', input_path, '-map', '0:v:0', '-map', '0:a?', '-c:v', 'libx264', '-preset', 'fast', '-crf', '23', '-c:a', 'aac', '-b:a', '192k', '-ignore_unknown', '-y', output_path]
+        # Tier 3: GPU Hardware-Accelerated Transcode (NVENC / QSV / AMF / MF)
+        if encoder and encoder != "libx264":
+            cmd_tier3 = ['ffmpeg', '-i', input_path, '-map', '0:v:0', '-map', '0:a?', '-c:v', encoder, '-c:a', 'aac', '-b:a', audio_bitrate, '-ignore_unknown', '-y', output_path]
+        else:
+            cmd_tier3 = ['ffmpeg', '-i', input_path, '-map', '0:v:0', '-map', '0:a?', '-c:v', 'libx264', '-preset', 'superfast', '-crf', '22', '-c:a', 'aac', '-b:a', audio_bitrate, '-ignore_unknown', '-y', output_path]
+
+        # Tier 4: High-Speed CPU Software Transcode (Superfast preset)
+        cmd_tier4 = ['ffmpeg', '-i', input_path, '-map', '0:v:0', '-map', '0:a?', '-c:v', 'libx264', '-preset', 'superfast', '-crf', '22', '-c:a', 'aac', '-b:a', audio_bitrate, '-ignore_unknown', '-y', output_path]
+
+        # Tier 5: Universal Emergency Fallback (Ultrafast preset)
+        cmd_tier5 = ['ffmpeg', '-i', input_path, '-map', '0:v:0', '-map', '0:a?', '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '24', '-c:a', 'aac', '-b:a', audio_bitrate, '-ignore_unknown', '-y', output_path]
 
         print(f"    [Convert] {filename} -> .{target_format}")
         
         attempts = [
-            ("Tier 1 (Fast Transmux)", cmd_tier1),
-            ("Tier 2 (Safe Stream Copy)", cmd_tier2),
-            ("Tier 3 (Universal Transcode)", cmd_tier3)
+            ("Tier 1 (Instant Pure Stream Copy)", cmd_tier1),
+            ("Tier 2 (Video Stream Copy + AAC Audio)", cmd_tier2),
+            (f"Tier 3 (GPU Hardware Transcode - {encoder})", cmd_tier3),
+            ("Tier 4 (High-Speed CPU Superfast)", cmd_tier4),
+            ("Tier 5 (Universal Emergency Ultrafast)", cmd_tier5)
         ]
         
         last_error = ""
         for tier_name, cmd in attempts:
             try:
-                subprocess.run(cmd, check=True, capture_output=True)
+                startupinfo = None
+                if os.name == 'nt':
+                    startupinfo = subprocess.STARTUPINFO()
+                    startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                    startupinfo.wShowWindow = subprocess.SW_HIDE
+
+                subprocess.run(cmd, check=True, capture_output=True, startupinfo=startupinfo)
                 if run_id:
                     TimeMachine.log_action("Format Converter", run_id, f"CONVERT_{target_format.upper()}", input_path, output_path, op_type="CREATE")
                 return {"status": "success", "file": filename}

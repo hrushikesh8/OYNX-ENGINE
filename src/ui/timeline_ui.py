@@ -519,12 +519,8 @@ class TimelineComposerUI(QWidget):
         self.player_container.setMinimumHeight(200)
         right_lay.addWidget(self.player_container, stretch=1)
 
-        self.media_player = QMediaPlayer()
-        self.audio_output = QAudioOutput()
-        self.media_player.setAudioOutput(self.audio_output)
-        self.media_player.setVideoOutput(self.video_widget)
-        self.media_player.positionChanged.connect(self.position_changed)
-        self.media_player.durationChanged.connect(self.duration_changed)
+        self.media_player = None
+        self.audio_output = None
 
         # Scroll wrapper for inspector parameters
         scroll = QScrollArea()
@@ -903,7 +899,8 @@ class TimelineComposerUI(QWidget):
 
     def clear_all_clips(self):
         self.clips.clear()
-        self.media_player.stop()
+        if self.media_player is not None:
+            self.media_player.stop()
         self.select_clip_row(-1)
         self.populate_table()
         self.update_visualizer()
@@ -1023,7 +1020,8 @@ class TimelineComposerUI(QWidget):
 
         # Load file into preview media player
         if clip.get('is_image', False):
-            self.media_player.stop()
+            if self.media_player is not None:
+                self.media_player.stop()
             self.time_label.setText("00:00:00 / 00:00:00")
             self.timeline_slider.setRange(0, 0)
             self.play_btn.setEnabled(False)
@@ -1225,7 +1223,8 @@ class TimelineComposerUI(QWidget):
         if 0 <= row < len(self.clips):
             self.clips.pop(row)
             if self.current_row == row:
-                self.media_player.stop()
+                if self.media_player is not None:
+                    self.media_player.stop()
                 self.select_clip_row(-1)
             elif self.current_row > row:
                 self.select_clip_row(self.current_row - 1)
@@ -1294,14 +1293,30 @@ class TimelineComposerUI(QWidget):
         """)
         self.update_visualizer()
 
+    def ensure_player(self):
+        if self.media_player is None:
+            self.media_player = QMediaPlayer()
+            self.audio_output = QAudioOutput()
+            self.media_player.setAudioOutput(self.audio_output)
+            self.media_player.setVideoOutput(self.video_widget)
+            self.media_player.positionChanged.connect(self.position_changed)
+            self.media_player.durationChanged.connect(self.duration_changed)
+        return self.media_player
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        self.ensure_player()
+
     # --- PREVIEW PLAYER LOGIC ---
     def load_video(self, file_path):
         if file_path:
+            self.ensure_player()
             self.media_player.setSource(QUrl.fromLocalFile(file_path))
             self.media_player.play()
             self.play_btn.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPause))
 
     def toggle_playback(self):
+        self.ensure_player()
         if self.media_player.playbackState() == QMediaPlayer.PlaybackState.PlayingState:
             self.media_player.pause()
             self.play_btn.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay))
@@ -1310,11 +1325,13 @@ class TimelineComposerUI(QWidget):
             self.play_btn.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPause))
 
     def toggle_mute(self):
+        self.ensure_player()
         is_muted = self.audio_output.isMuted()
         self.audio_output.setMuted(not is_muted)
         self.mute_btn.setText("🔇" if not is_muted else "🔊")
 
     def set_volume(self, value):
+        self.ensure_player()
         self.audio_output.setVolume(value / 100.0)
         if value == 0:
             self.mute_btn.setText("🔇")
@@ -1323,26 +1340,35 @@ class TimelineComposerUI(QWidget):
             self.mute_btn.setText("🔊")
 
     def skip_backward(self):
+        if self.media_player is None:
+            return
         new_pos = max(0, self.media_player.position() - 10000)
         self.media_player.setPosition(new_pos)
 
     def skip_forward(self):
+        if self.media_player is None:
+            return
         new_pos = min(self.media_player.duration(), self.media_player.position() + 10000)
         self.media_player.setPosition(new_pos)
 
     def position_changed(self, position):
+        if self.media_player is None:
+            return
         self.timeline_slider.setValue(position)
         current = self.format_time(position)[:8]
         total = self.format_time(self.media_player.duration())[:8]
         self.time_label.setText(f"{current} / {total}")
 
     def duration_changed(self, duration):
+        if self.media_player is None:
+            return
         self.timeline_slider.setRange(0, duration)
         total = self.format_time(duration)[:8]
         self.time_label.setText(f"00:00:00 / {total}")
 
     def set_position(self, position):
-        self.media_player.setPosition(position)
+        if self.media_player is not None:
+            self.media_player.setPosition(position)
 
     def format_time(self, ms):
         seconds = (ms // 1000) % 60

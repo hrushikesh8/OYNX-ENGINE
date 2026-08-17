@@ -159,7 +159,7 @@ class SeamlessSutureUI(QWidget):
 
     def browse_files(self):
         start_dir = getattr(sys, '_onyx_last_dir', os.path.expanduser("~\\Desktop"))
-        files, _ = QFileDialog.getOpenFileNames(self, "Select Video Parts", start_dir, "Video Files (*.mp4 *.mkv *.avi)")
+        files, _ = QFileDialog.getOpenFileNames(self, "Select Video Parts", start_dir, "Video Files (*.mp4 *.mkv *.avi *.mov *.webm *.flv *.wmv *.mpg *.mpeg *.m4v *.ts *.vob *.3gp);;All Files (*)")
         if files:
             sys._onyx_last_dir = os.path.dirname(files[0])
             for f in files: self.file_list.addItem(f)

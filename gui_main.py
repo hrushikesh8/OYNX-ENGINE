@@ -2,11 +2,39 @@ import sys
 import os
 
 # Suppress verbose Qt Multimedia FFmpeg decoder warnings (e.g. AAC env_facs_q invalid spam)
-os.environ["QT_LOGGING_RULES"] = "qt.multimedia.*=false"
+os.environ["QT_LOGGING_RULES"] = "qt.multimedia.*=false;qt.multimedia.ffmpeg.*=false"
+os.environ["OPENCV_FFMPEG_LOGLEVEL"] = "-8"
+os.environ["OPENCV_LOG_LEVEL"] = "SILENT"
+os.environ["AV_LOG_FORCE_NOCOLOR"] = "1"
+
+# Redirect C-level file descriptor 2 (sys.stderr fileno) to os.devnull so C DLLs
+# (e.g. qmedia_ffmpeg.dll / avcodec.dll) cannot flood the console with mjpeg/png warnings.
+try:
+    _orig_stderr_fd = os.dup(2)
+    _devnull_file = open(os.devnull, 'w')
+    os.dup2(_devnull_file.fileno(), 2)
+    _orig_stderr_stream = os.fdopen(_orig_stderr_fd, 'w')
+except Exception:
+    _orig_stderr_stream = sys.stderr
+
+class _CleanStderrFilter:
+    def __init__(self, target):
+        self.target = target
+    def write(self, msg):
+        if any(ignore in msg for ignore in ("[mjpeg @", "[png @", "unable to decode APP fields", "No JPEG data found in image", "env_facs_q")):
+            return
+        if self.target:
+            self.target.write(msg)
+    def flush(self):
+        if self.target:
+            self.target.flush()
+
+if hasattr(sys, "stderr") and not isinstance(sys.stderr, _CleanStderrFilter):
+    sys.stderr = _CleanStderrFilter(_orig_stderr_stream)
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
                              QHBoxLayout, QPushButton, QLabel, QStackedWidget, 
                              QFrame, QGridLayout, QStatusBar, QProgressBar, QScrollArea)
-from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtCore import Qt, QTimer, QEvent
 
 # --- FEATURE CORE & WORKER IMPORTS ---
 from src.ui.custom_widgets import TaskWorker
@@ -28,6 +56,7 @@ from src.ui.scene_sniper_ui import SceneSniperUI
 from src.ui.merger_ui import StreamMergerUI
 from src.ui.stitcher_ui import VideoStitcherUI
 from src.ui.timeline_ui import TimelineComposerUI
+from src.ui.subtitle_fetcher_ui import SubtitleFetcherUI
 
 class MasterOrchestrator(QMainWindow):
     """
@@ -38,7 +67,13 @@ class MasterOrchestrator(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Onyx Engine v3.0 | Professional Production Suite")
-        self.setWindowFlags(Qt.WindowType.FramelessWindowHint) # Professional Custom Title Bar
+        self.setWindowFlags(
+            Qt.WindowType.Window |
+            Qt.WindowType.FramelessWindowHint |
+            Qt.WindowType.WindowMinimizeButtonHint |
+            Qt.WindowType.WindowMaximizeButtonHint |
+            Qt.WindowType.WindowSystemMenuHint
+        )
         
         # Default split-screen friendly minimums
         self.resize(1000, 700) 
@@ -451,6 +486,7 @@ class MasterOrchestrator(QMainWindow):
         grid_audio.addWidget(self.create_tool_card("📝 Subtitle Track Cleaner", "Remove extra subtitle streams.", 14), 1, 0)
         grid_audio.addWidget(self.create_tool_card("🔗 Stream Merger (Audio Sync)", "Mux audio with video timeline.", 15), 1, 1)
         grid_audio.addWidget(self.create_tool_card("📝 Subtitle Muxer", "Softcode external subtitles into container.", 16), 2, 0)
+        grid_audio.addWidget(self.create_tool_card("🌐 Auto-Subtitle Fetcher", "Download & merge subtitles automatically.", 21), 2, 1)
         audio_layout.addLayout(grid_audio)
         audio_layout.addStretch()
         self.workspace.addWidget(audio_hub)
@@ -534,8 +570,12 @@ class MasterOrchestrator(QMainWindow):
         self.workspace.addWidget(self.timeline_ui)
 
         # 20: Chronicle Organizer
-        self.chronicle_ui = ChronicleUI(orchestrator=self)
+        self.chronicle_ui = ChronicleUI(back_callback=lambda: self.workspace.setCurrentIndex(5), orchestrator=self)
         self.workspace.addWidget(self.chronicle_ui)
+
+        # 21: Subtitle Fetcher
+        self.subtitle_fetcher_ui = SubtitleFetcherUI(back_callback=lambda: self.workspace.setCurrentIndex(3), orchestrator=self)
+        self.workspace.addWidget(self.subtitle_fetcher_ui)
 
         # (SettingsUI is now a modal dialog, not added to stacked widget)
 
@@ -709,6 +749,12 @@ class MasterOrchestrator(QMainWindow):
 
     def append_log(self, text):
         self.dashboard_ui.append_log(text)
+
+    def changeEvent(self, event):
+        super().changeEvent(event)
+        if event.type() == QEvent.Type.WindowStateChange:
+            if hasattr(self, 'title_bar_widget') and self.title_bar_widget:
+                self.title_bar_widget.update_maximize_button()
 
 # --- BOOTSTRAP ---
 if __name__ == "__main__":

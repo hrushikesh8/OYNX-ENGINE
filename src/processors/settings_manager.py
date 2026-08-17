@@ -19,24 +19,57 @@ class SettingsManager:
                 pass
         return {}
 
+    _detected_gpu_h264 = None
+    _detected_gpu_h265 = None
+
     @classmethod
-    def get_video_encoder(cls, default="libx264"):
+    def detect_gpu_encoder(cls, codec="h264"):
+        if codec == "h264" and cls._detected_gpu_h264 is not None:
+            return cls._detected_gpu_h264
+        if codec == "hevc" and cls._detected_gpu_h265 is not None:
+            return cls._detected_gpu_h265
+
+        import subprocess
+        candidates = ['h264_nvenc', 'h264_qsv', 'h264_amf', 'h264_mf'] if codec == "h264" else ['hevc_nvenc', 'hevc_qsv', 'hevc_amf']
+        
+        startupinfo = None
+        if os.name == 'nt':
+            startupinfo = subprocess.STARTUPINFO()
+            startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+            startupinfo.wShowWindow = subprocess.SW_HIDE
+
+        for enc in candidates:
+            try:
+                cmd = ['ffmpeg', '-f', 'lavfi', '-i', 'nullsrc=s=64x64:d=1', '-c:v', enc, '-f', 'null', '-']
+                res = subprocess.run(cmd, capture_output=True, startupinfo=startupinfo, timeout=3)
+                if res.returncode == 0:
+                    if codec == "h264": cls._detected_gpu_h264 = enc
+                    else: cls._detected_gpu_h265 = enc
+                    return enc
+            except Exception:
+                pass
+                
+        fallback = "libx264" if codec == "h264" else "libx265"
+        if codec == "h264": cls._detected_gpu_h264 = fallback
+        else: cls._detected_gpu_h265 = fallback
+        return fallback
+
+    @classmethod
+    def get_video_encoder(cls, default=None):
         """Resolves the system's hardware-accelerated H.264 video encoder API string."""
         s = cls.get_settings()
         hw_idx = s.get("hw_accel", 0)
         
-        # Hardware API Mapping:
-        # 1: NVIDIA NVENC (NVidia Encoder API)
-        # 2: Intel QSV (Quick Sync Video API)
-        # 3: AMD AMF (Advanced Media Framework API)
         if hw_idx == 1: return "h264_nvenc"
         if hw_idx == 2: return "h264_qsv"
         if hw_idx == 3: return "h264_amf"
-        # 0: Fallback to the highly compatible CPU-bound libx264 software encoder.
-        return default
+        
+        # 0: Auto-detect available GPU hardware encoder
+        detected = cls.detect_gpu_encoder("h264")
+        return detected if detected else (default or "libx264")
 
     @classmethod
-    def get_video_encoder_h265(cls, default="libx265"):
+    def get_video_encoder_h265(cls, default=None):
         """Returns the appropriate H.265 video encoder based on hardware acceleration preference."""
         s = cls.get_settings()
         hw_idx = s.get("hw_accel", 0)
@@ -44,7 +77,9 @@ class SettingsManager:
         if hw_idx == 1: return "hevc_nvenc"
         if hw_idx == 2: return "hevc_qsv"
         if hw_idx == 3: return "hevc_amf"
-        return default
+        
+        detected = cls.detect_gpu_encoder("hevc")
+        return detected if detected else (default or "libx265")
 
     @classmethod
     def get_audio_bitrate(cls, default="192k"):

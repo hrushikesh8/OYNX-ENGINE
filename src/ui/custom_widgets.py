@@ -209,15 +209,18 @@ class EstimateWorker(QThread):
         self.speed_multiplier = speed_multiplier
         
     def run(self):
-        import glob
+        import os
         files_to_probe = []
         for path in self.input_paths:
             if not path:
                 continue
             if os.path.isdir(path):
-                extensions = ('*.mp4', '*.mkv', '*.avi', '*.mov', '*.flv', '*.wmv', '*.mpg', '*.mpeg', '*.webm', '*.mp3', '*.wav', '*.m4a', '*.aac')
-                for ext in extensions:
-                    files_to_probe.extend(glob.glob(os.path.join(path, ext), recursive=False))
+                extensions = ('.mp4', '.mkv', '.avi', '.mov', '.flv', '.wmv', '.mpg', '.mpeg', '.webm', '.mp3', '.wav', '.m4a', '.aac')
+                for f in os.listdir(path):
+                    if f.lower().endswith(extensions):
+                        full_p = os.path.join(path, f)
+                        if os.path.isfile(full_p):
+                            files_to_probe.append(full_p)
             elif os.path.isfile(path):
                 files_to_probe.append(path)
             
@@ -349,14 +352,15 @@ class SmartRunButton(QWidget):
     def on_est_done(self, est_str, est_seconds):
         self.btn.setEnabled(True)
         self.est_seconds = est_seconds
-        if est_str.startswith("Error"):
-            self.btn.setText(self.original_text)
+        if est_str.startswith("Error") or est_str == "Unable to estimate":
+            self.btn.setText("✅ Confirm Run")
         else:
             self.btn.setText(f"✅ Confirm Run (Est. {est_str})")
-            self.btn.setStyleSheet("""
-                QPushButton { background-color: #28a745; color: white; font-size: 18px; font-weight: bold; border-radius: 8px; }
-                QPushButton:hover { background-color: #218838; }
-            """)
+            
+        self.btn.setStyleSheet("""
+            QPushButton { background-color: #28a745; color: white; font-size: 18px; font-weight: bold; border-radius: 8px; }
+            QPushButton:hover { background-color: #218838; }
+        """)
 
     def update_progress(self, pct, txt):
         self.btn.setEnabled(False)
@@ -440,7 +444,12 @@ class DropZone(QFrame):
         layout.setSpacing(10)
 
         self.file_input = QLineEdit()
-        placeholder = "⏬ Drag & Drop a video file here, paste path, or click Browse..." if mode == 'file' else "⏬ Drag & Drop a folder here, paste path, or click Browse..."
+        if mode == 'both':
+            placeholder = "⏬ Drag & Drop a video file or folder here, paste path, or choose File/Folder..."
+        elif mode == 'file':
+            placeholder = "⏬ Drag & Drop a video file here, paste path, or click Browse..."
+        else:
+            placeholder = "⏬ Drag & Drop a folder here, paste path, or click Browse..."
         self.file_input.setPlaceholderText(placeholder)
         self.file_input.setStyleSheet("border: none; background: transparent; font-size: 14px; font-weight: bold; color: #ffffff;")
         self.file_input.setMinimumHeight(40)
@@ -497,7 +506,7 @@ class DropZone(QFrame):
                     sys._onyx_last_dir = folder_name
                     self.file_input.setText(folder_name)
             else:
-                file_name, _ = QFileDialog.getOpenFileName(self.window(), "Select File", start_dir, "Video/Audio Files (*.mp4 *.mkv *.avi *.mov *.mp3 *.wav *.srt *.ass *.zip);;All Files (*)")
+                file_name, _ = QFileDialog.getOpenFileName(self.window(), "Select File", start_dir, "Media Files (*.mp4 *.mkv *.avi *.mov *.webm *.flv *.wmv *.mpg *.mpeg *.m4v *.ts *.vob *.3gp *.mp3 *.wav *.m4a *.aac *.flac *.ogg *.srt *.ass *.vtt *.zip);;Video Files (*.mp4 *.mkv *.avi *.mov *.webm *.flv *.wmv *.mpg *.mpeg *.m4v *.ts *.vob *.3gp);;Audio Files (*.mp3 *.wav *.m4a *.aac *.flac *.ogg);;All Files (*)")
                 if file_name:
                     sys._onyx_last_dir = os.path.dirname(file_name)
                     self.file_input.setText(file_name)

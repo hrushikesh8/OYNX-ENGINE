@@ -43,13 +43,14 @@ class VideoEditor:
 
     def split_by_time(self, input_path: str, segment_time: int, run_id: str | None = None):
         """Splits video into multiple chunks by seconds."""
-        # --- ORIGINAL NAMING LOGIC ---
-        filename = os.path.splitext(os.path.basename(input_path))[0]
+        base_name, ext = os.path.splitext(os.path.basename(input_path))
+        if not ext:
+            ext = ".mp4"
         output_dir = os.path.dirname(input_path)
-        output_pattern = os.path.join(output_dir, f"{filename}_part%03d.mp4")
+        output_pattern = os.path.join(output_dir, f"{base_name}_part%03d{ext}")
         
         command = [
-            'ffmpeg', '-i', input_path, 
+            'ffmpeg', '-fflags', '+genpts', '-i', input_path, 
             '-map', '0:v', '-map', '0:a?',     # Isolate video and audio (if present), intentionally discarding subtitles for segmenting.
             '-c', 'copy', '-f', 'segment',     # Utilize the segment muxer to natively split the stream without transcoding.
             '-segment_time', str(segment_time), 
@@ -59,10 +60,16 @@ class VideoEditor:
         ]
         try:
             print(f"  VidFlow Editor: Splitting into {segment_time}s segments...")
-            subprocess.run(command, check=True, capture_output=True)
+            startupinfo = None
+            if os.name == 'nt':
+                startupinfo = subprocess.STARTUPINFO()
+                startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                startupinfo.wShowWindow = subprocess.SW_HIDE
+
+            subprocess.run(command, check=True, capture_output=True, startupinfo=startupinfo)
             
             if run_id:
-                search_pattern = os.path.join(os.path.dirname(input_path), f"{filename}_part*.mp4")
+                search_pattern = os.path.join(os.path.dirname(input_path), f"{base_name}_part*{ext}")
                 for generated_file in glob.glob(search_pattern):
                     TimeMachine.log_action("Shorts Editor", run_id, "SPLIT_CHUNK", input_path, generated_file, op_type="CREATE")
                     
